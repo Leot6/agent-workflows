@@ -1,0 +1,91 @@
+# Backend declaration: claude (Anthropic claude CLI). The onboarding probe
+# re-runs on any cmd.version change (declarations are promises, the probe
+# makes them facts). Adding a CLI = a file like this; the ferry never reads
+# backend names, only capabilities.
+# TWIN DECLARATION: planning-workflow/runtime-scripts/backends/claude.kv is
+# this same CLI's other declaration, under planning's one-shot launcher and
+# its own key set. A claude CLI update moves BOTH; recalibrate the two
+# together.
+family=pty_tmux
+cmd.launch=claude --model "{model}" --effort {effort} --permission-mode dontAsk --add-dir {workspace} --settings {profile} {bootstrap}
+cmd.version=claude --version
+prompt_style=positional
+# SHARED PROFILE, BY CONSTRUCTION. profiles/settings-hooks.json holds no
+# claude-specific content: it is the settings-JSON SHAPE, which any CLI
+# wrapping Claude Code accepts, and its two workflow-owned hook commands
+# (PreToolUse→heartbeat, Stop→record.sh stop-gate) are the WORKFLOW's harness contract, not a backend
+# fact — codex.hooks.json carries them verbatim in its own shape. A third copy
+# would be a third projection of one contract; 30-closure compares the copies
+# that exist. Split this only when a real divergence appears, and let the
+# divergence be the reason.
+profile=profiles/settings-hooks.json
+cap=pty,subagent,stop_gate,heartbeat,heartbeat_covers_subagents,warm_resume,nudge,takeover
+
+# Frame-stability gap for the double capture (backends/pty_tmux.sh): the
+# live-measured value for this TUI. Declared rather than assumed.
+frame_settle=0.4
+sig.working=(esc to interrupt|Thinking|Running command|✻)
+# composer_line anchors the classification DOMAIN (last composer line -> end).
+sig.composer_line=^[[:space:]\xC2\xA0]*❯
+# NBSP tolerated on BOTH sides of the prompt char (prefix v1-measured, suffix
+# live-measured; C-locale stripping cannot remove a trailing NBSP).
+sig.awaiting_input=^[[:space:]\xC2\xA0]*❯[[:space:]\xC2\xA0]*$
+sig.error_retryable=(API connection error|overloaded_error|Retrying in)
+# Quota exhaustion is error_retryable's opposite: waiting does not help until a
+# reset time the backend names. UNDECLARED IS NOT NEUTRAL — measured on a
+# sibling declaration, where a quota-out pane read as idle and the ferry
+# respawned into it (attempts born dead); for want of one line: the quota branch of
+# pty_classify_screen is skipped, a quota-blocked pane classifies
+# awaiting_input (the IDLE class, which the nudge injects into), and probe.sh
+# falls back to the pattern `a^` — which never matches — so result=backend_quota
+# is unreachable and a zero-quota window reports "onboarding probe FAILED —
+# declarations are promises", blaming the declaration for a backend that is
+# merely out.
+# PROVENANCE, not overstated: this alternation is NOT live-measured. It is the
+# superset of the wordings Anthropic's docs and issue tracker carry for this
+# CLI (session / weekly / Opus limits; the "usage limit reached … your limit
+# will reset at" form). validation-debt VD-25 closes it on the first real
+# capture. The quota MECHANISM is already drilled (drill S9d, mock
+# sig.quota_exhausted=MOCK_QUOTA); what is unobserved is this CLI's literal
+# line. Note this is the OPPOSITE stance to codex.kv, deliberately: there the
+# zero-state wording had no published candidates at all, so a pattern would
+# have implied coverage the file did not have — here the candidates exist and
+# the cost of waiting is a misclassification into the nudge path, not a no-op.
+# The match runs over the VISIBLE pane (capture-pane without -S), and only
+# inside the empty-composer idle branch, which is what bounds a false positive
+# to one loud, relaunch-clearable park.
+sig.quota_exhausted=(usage limit reached|hit your (session|weekly|Opus) limit|[Yy]our limit will reset at)
+
+# 529 Overloaded — the backend is UP and refusing, which is neither idle nor
+# retryable-in-progress and had no member of this vocabulary at all. LIVE
+# MEASURED (one slice's postcheck round, this CLI at 2.1.259): 163 rendered instances of "API Error: 529 Overloaded.
+# This is a server-side issue, usually temporary" over one pane log, 129
+# unwrapped and 34 broken across lines — which is why the pattern is the short
+# discriminator rather than the whole banner. Counted over the same whole log,
+# sig.error_retryable's other two alternatives read ZERO: `overloaded_error` 0
+# hits, `API connection error` 0 hits. So only `Retrying in` matched, and only
+# while the ladder was still running; once it exhausted, the composer was empty
+# and the pane classified awaiting_input — the ferry nudged a client that could
+# not answer and failed the attempt as `idle`, twice, and then parked
+# no_novelty on an identical fingerprint. Two attempts of the round's budget
+# spent on a backend that was out.
+# Same domain and the same bounded false-positive cost as sig.quota_exhausted
+# above: matched over the VISIBLE pane only, and only inside the empty-composer
+# idle branch — so a session that is working classifies `working` long before
+# this is read, and the worst case is one loud park a relaunch clears.
+sig.backend_overloaded=529 Overloaded
+
+# The trust dialog's WORDING moved across CLI versions: the older build asks
+# "Do you trust the files in this folder?", the newer one opens "Accessing
+# workspace:" with a safety-check paragraph and a preselected "1. Yes, I
+# trust this folder" choice — the old signature missed it and the dialog
+# rode to unknown_screen (its choice line even matches the composer regex).
+# Both wordings match on their distinctive trust sentence; Enter confirms
+# the preselected choice in both. The workspaces/repos a session opens are
+# workflow-provisioned (the topic's own checkouts), which is what licenses
+# an auto-answer here at all; the recurrence cap (liveness.modal_acts_max)
+# still bounds it. Recalibrate at the probe on any cmd.version change.
+sig.modal.trust=(Do you trust the files in this folder\?|Yes, I trust this folder)
+act.modal.trust=Enter
+
+nudge_text=continue

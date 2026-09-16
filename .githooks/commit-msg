@@ -1,0 +1,14 @@
+#!/bin/sh
+# Vendored Gerrit-style commit-msg hook (compact): appends a Change-Id trailer
+# when the message has none. Keeps the workflow's own commits on the target
+# project's commit convention verbatim (subject format + Change-Id) — see the
+# repo README's "Repo conventions".
+MSG="$1"
+grep -q '^Change-Id: I' "$MSG" && exit 0
+# Strip comment lines for hashing; skip empty messages (git aborts those anyway).
+CONTENT=$(grep -v '^#' "$MSG")
+[ -z "$CONTENT" ] && exit 0
+ID=$( { echo "$CONTENT"; date +%s%N; hostname; } | git hash-object --stdin )
+# Insert before existing trailers if any, else append as its own block.
+printf '\nChange-Id: I%s\n' "$ID" >> "$MSG"
+exit 0

@@ -1,0 +1,37 @@
+{
+  "//": "The workflow's harness contract in the SETTINGS-JSON SHAPE, which is what this file is named for: it holds nothing backend-specific. claude.kv points at it BY CONSTRUCTION (the note at its profile= key), and codex.hooks.json carries the same two workflow-owned hook commands verbatim in codex's own shape — a per-backend copy would project ONE contract into N files, so 30-closure compares the copies that exist and a split is licensed only by a real divergence, named. The enforcement anchor: Stop gate + heartbeat hooks call the workflow's session-side tools by absolute path. This is a TEMPLATE and is never edited at run time: ferry.sh renders it once per cold spawn into <workspace>/.runtime/profile-<session>.json, substituting {WORKFLOW_ROOT}, {WORKSPACE} and {SESSION_NAME} together — from whichever declaration THAT spawn's own (role, slice) resolution names, so the profile is a pure function of the assignment. launch.sh only checks that the declaration and this file resolve; probe.sh renders its own copy into its per-backend scratch workspace.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{WORKFLOW_ROOT}/runtime-scripts/session/heartbeat.sh {WORKSPACE}"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "idle_prompt|permission_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{WORKFLOW_ROOT}/runtime-scripts/session/notify_event.sh {WORKSPACE} {SESSION_NAME}"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{WORKFLOW_ROOT}/runtime-scripts/session/record.sh stop-gate {WORKSPACE} {SESSION_NAME}"
+          }
+        ]
+      }
+    ]
+  }
+}

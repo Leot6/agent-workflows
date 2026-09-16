@@ -1,0 +1,88 @@
+# Backend declaration: codex (OpenAI codex CLI, billed on the owner's plan).
+# Authored against codex-cli 0.147.0: every signature and every
+# hook semantic below is LIVE-MEASUREED from scratch tmux sessions (frames +
+# hook logs captured same day); the onboarding probe re-attests on first real
+# use and on every cmd.version change. Structural family pty_tmux.
+# TWIN DECLARATION: planning-workflow/runtime-scripts/backends/codex.kv is
+# this same CLI's other declaration, under planning's one-shot launcher and
+# its own key set. A codex CLI update moves BOTH; recalibrate the two
+# together or neither.
+#
+# HOW HOOKS REACH THE SESSION (codex has no --settings flag): codex loads
+# project-layer hooks from <cwd>/.codex/hooks.json once the directory is
+# trusted, so cmd.launch mounts the ferry-baked per-session profile there
+# before starting the CLI (mkdir + cp + cd). {SESSION_NAME} rides inside the
+# baked file, so the Stop gate keeps its per-caller scoping. Two measured
+# facts carry this design: (1) the project layer loads ONLY after the trust
+# dialog — which is sig.modal.trust below, cleared by its own default; (2) a
+# "//"-style comment key in hooks.json makes codex SILENTLY skip the whole
+# file — sessions run with no hooks and no error — so codex.hooks.json
+# carries keys.hooks and nothing else, and its documentation lives HERE.
+# --dangerously-bypass-hook-trust is licensed by the same thing that
+# licenses the trust-modal auto-answer in claude.kv: the workflow itself
+# provisions the hooks file being trusted.
+family=pty_tmux
+cmd.launch=mkdir -p {workspace}/.codex && cp {profile} {workspace}/.codex/hooks.json && cd {workspace} && codex --dangerously-bypass-hook-trust --model "{model}" -c model_reasoning_effort={effort} --sandbox danger-full-access --add-dir {workspace} {bootstrap}
+cmd.version=codex --version
+prompt_style=positional
+profile=profiles/codex.hooks.json
+# Deliberately absent, each unmeasured: warm_resume (the `codex resume`
+# subcommand exists, but the ferry's warm path is unexercised on this CLI —
+# absence forces warm rows cold, named at topic start, never silent) and
+# heartbeat_covers_subagents (subagents exist and were measured — tool
+# `collaborationspawn_agent` — but whether SUBAGENT-internal tool calls
+# reach the main session's PreToolUse hook was not; absence makes the
+# working-age guard the stated bound for impl).
+cap=pty,subagent,stop_gate,heartbeat,nudge,takeover
+
+# --- screen signatures (closed set; unmatched state => park(unknown_screen)) ---
+# All literals are live pane text of 0.147.0. '›' is U+203A with
+# NO NBSP around it (measured bytes: E2 80 BA + plain space), so the NBSP
+# tolerance claude.kv needs is not carried here. '›' also prefixes the
+# transcript's user-turn lines — safe for the same reason claude's is:
+# sig.composer_line anchors the classification domain from the LAST match to
+# the frame's end, and transcript lines sit above the composer.
+# PLACEMENT, measured: codex paints its status bullets ("• Working (3s …)",
+# "• Reconnecting... 2/5 (11s …)") ABOVE the composer, in the transcript —
+# the in-region working/error checks never see them. Working detection rides
+# the adapter's frame-disagree path: the bullet's second counter moves the
+# transcript above the composer. Not airtight — a 0.4s capture pair landing
+# inside one timer second agrees and reads idle once — but the nudge ladder
+# acts on a sustained quiet read (liveness.quiet_grace of stale heartbeat +
+# flat CPU + agreeing frames), not one poll. These literals serve the
+# composer-absent whole-frame path, and were chosen disjoint: 'esc to
+# interrupt' is shared by BOTH bullets, so it is excluded — the adapter
+# checks sig.working BEFORE sig.error_retryable, and a shared literal would
+# make a reconnect banner read working there.
+# Frame-stability gap for the double capture (backends/pty_tmux.sh): the
+# live-measured value for this TUI. Declared rather than assumed.
+frame_settle=0.4
+sig.working=(Working \()
+sig.composer_line=^[[:space:]]*›
+sig.awaiting_input=^[[:space:]]*›[[:space:]]*$
+# Live frames: "• Reconnecting... 2/5 (11s • esc to interrupt)" over
+# "└ Stream disconnected before completion: error sending request for url
+# (...)". Retry is bounded (5 attempts measured) before a terminal error.
+sig.error_retryable=(Reconnecting|Stream disconnected|error sending request)
+
+# --- modal allowlist (exact matches only; unmatched modal => park(unknown_modal)) ---
+# Live frame: "Do you trust the contents of this directory? Working with
+# untrusted contents ... › 1. Yes, continue / 2. No, quit / Press enter to
+# continue". Enter takes the preselected choice — the pane says so itself.
+# Trust is sticky per directory (a second session in the same directory saw
+# no modal, measured), so this fires once per workspace, not per spawn.
+# NOTE the selected choice line carries '›': in a modal frame the last ›
+# line is the CHOICE line, not a composer — the modal allowlist is checked
+# before screen classification, which is what keeps this frame from reading
+# as awaiting_input.
+sig.modal.trust=Do you trust the contents of this directory\?
+act.modal.trust=Enter
+
+# Quota footer FORMAT measured live ("weekly 47% left"); the wording at zero
+# is not, and is left undeclared rather than guessed — the same stance as
+# planning-workflow's codex.kv: a pattern that never matches would imply
+# coverage this file does not have. The cost of leaving it undeclared is the
+# one measured on the Claude Code TUI (a quota-out pane looks idle); a real zero event or a
+# probe observation calibrates it (validation-debt VD-23).
+
+nudge_text=continue

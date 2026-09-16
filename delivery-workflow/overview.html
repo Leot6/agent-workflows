@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>delivery-workflow 全景</title>
+<style>
+  :root {
+    --bg: #f7f6f2; --fg: #1f2328; --muted: #57606a; --line: #d8d5cc;
+    --card: #ffffff; --accent: #0b5fa5; --ok: #1a7f37; --warn: #9a6700; --bad: #b42318;
+    --code-bg: #eeece6; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1216; --fg: #e6e9ee; --muted: #9aa4b2; --line: #2b323c;
+      --card: #171c23; --accent: #5aa9ef; --ok: #4cc26b; --warn: #e2b23a; --bad: #f0715f; --code-bg: #1f262f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.65 -apple-system, "Segoe UI", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 24px 80px; }
+  h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  h2 { font-size: 22px; margin: 48px 0 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  h3 { font-size: 17px; margin: 28px 0 8px; }
+  p { margin: 8px 0; }
+  .lead { color: var(--muted); font-size: 16px; margin-bottom: 20px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 18px 0; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .kpi b { display: block; font-size: 22px; font-weight: 650; }
+  .kpi span { color: var(--muted); font-size: 13px; }
+  code, pre { font-family: var(--mono); font-size: 13px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code-bg); padding: 12px 14px; border-radius: 8px; overflow-x: auto; line-height: 1.5; }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 14px; }
+  .tw { overflow-x: auto; }
+  th, td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin: 14px 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card h4 { margin: 0 0 6px; font-size: 15px; }
+  .card p { color: var(--fg); font-size: 14px; }
+  .tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); margin-right: 6px; }
+  .tag.ok { color: var(--ok); border-color: var(--ok); }
+  .tag.warn { color: var(--warn); border-color: var(--warn); }
+  .tag.bad { color: var(--bad); border-color: var(--bad); }
+  .pipe { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0; }
+  .pipe .st { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+  .pipe .st.cold { border-color: var(--accent); }
+  .pipe .arr { color: var(--muted); }
+  .pipe .grp { border: 1px dashed var(--line); border-radius: 10px; padding: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .legend { color: var(--muted); font-size: 13px; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 4px 0; }
+  .muted { color: var(--muted); }
+  .verdict { border-left: 4px solid var(--accent); padding: 8px 14px; background: var(--card); border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  small { color: var(--muted); }
+  a { color: var(--accent); }
+  .toc { columns: 2; column-gap: 32px; font-size: 14px; }
+  .toc a { text-decoration: none; }
+  @media (max-width: 640px) { .toc { columns: 1; } h1 { font-size: 24px; } }
+</style>
+</head>
+<body>
+<main>
+
+<h1>delivery-workflow 全景</h1>
+<p class="lead">一个用表驱动的 bash 管道，把一份 <code>plan.md</code> 交给无人值守的 LLM 会话，产出经独立评审、逐单元提交的代码。读完全部代码与文档后的总结、三角度评估与深度优化方案。度量基线：2026-09-05 的维护回合；本回合 12 个提交（§6 记录了每项的落地与证明）。</p>
+<p class="muted">快照说明：本页的度量、提交号与 check 数（27 checks + 13 drills）截至 2026-09-05 的维护回合；此后回合继续落地（现树 32 checks）。当前状态以 <code>README.md</code> 与 <code>runtime-docs/</code> 为准，本页作为该回合的评估记录保留。公开版未包含这些度量所依据的运行数据与 iteration-log 语料。</p>
+
+<div class="kpis">
+  <div class="kpi"><b>271</b><span>树快照条目数（自检记录，回合前 218）</span></div>
+  <div class="kpi"><b>9,363</b><span>runtime-scripts 行数 / 30 文件（回合前 9,061 / 27）</span></div>
+  <div class="kpi"><b>40 / 0</b><span>自检 27 checks + 13 drills 通过 / 失败，wall ≈23s</span></div>
+  <div class="kpi"><b>6 / 47</b><span>跑完的 topic / slice</span></div>
+  <div class="kpi"><b>82.0%</b><span>precheck 缺陷移除效率（4 topic）</span></div>
+  <div class="kpi"><b>42</b><span>未结 validation-debt 行（cap 50；本回合 +14：VD-60…73，每个新机制一行）</span></div>
+</div>
+
+<nav class="toc">
+  <a href="#purpose">1. 服务目的</a><br>
+  <a href="#framework">2. 核心框架</a><br>
+  <a href="#benefit">3. 收益（可度量）</a><br>
+  <a href="#cost">4. 成本（可度量）</a><br>
+  <a href="#eval">5. 三角度评估：完备 · 简洁 · 优雅</a><br>
+  <a href="#optimize">6. 深度优化方案</a><br>
+  <a href="#giants">7. 站在巨人肩膀上</a><br>
+  <a href="#map">附录 A. 文件地图</a><br>
+  <a href="#glossary">附录 B. 词汇表</a>
+</nav>
+
+<!-- ============================================================ -->
+<h2 id="purpose">1. 服务目的</h2>
+<p><b>问题</b>：让多个 LLM 编码会话在无人看守下，把一个已规划好的变更集落成一串经过独立评审、满足项目提交规范、可追溯到计划的 git 提交；同时让唯一稀缺的资源——owner 的注意力——只在真正需要判断时被打断，并且打断时手里有可裁决的证据。</p>
+<p><b>对象</b>：一个 owner（做 Class U 决定、push、裁定分歧）；可选的 pilot 会话（转发裁定、重启、观察）；由 ferry 驾驶的 author / reviewer 会话；author 派出的 implementer 子代理。</p>
+<p><b>立场</b>（design/architecture.md §1）：判断流向最便宜的仪器；记录即完成；缺席 ≠ 故障；能力声明而非名字；一切可度量的都印出实例而不是数字。</p>
+
+<!-- ============================================================ -->
+<h2 id="framework">2. 核心框架</h2>
+
+<h3>2.1 四个根设计</h3>
+<div class="cards">
+  <div class="card"><h4>① 一张表、一个推导</h4><p>每个阶段在 <code>config/stages.tsv</code> 里声明 scope / session / owed / verdicts / next / manifest；<code>lib/owed.sh</code> 是唯一读表的推导。emit 的拒绝、ferry 的推进检查、prompt 的清单都来自同一列表——不存在第二份。</p></div>
+  <div class="card"><h4>② 一个原子存储</h4><p><code>lib/state.sh</code>：每个 surface 一个文件，头部 <code>#v=1 gen= sum=md5 writer= t=</code>，tmp+rename、flock、写者类别（ferry/session/operator/gate/watchdog）。rc 0/1/2/3 把「无」与「坏」分开：<b>fault ≠ absent</b>。</p></div>
+  <div class="card"><h4>③ 能力而非名字</h4><p>后端是声明文件 <code>config/backends/&lt;name&gt;.kv</code>（launch 命令、能力、屏幕签名正则、modal 应答、settle 时间），只有一个结构适配器 <code>backends/pty_tmux.sh</code>。换 CLI = 加一个 .kv 并跑一次 onboarding probe。</p></div>
+  <div class="card"><h4>④ 判断流向最便宜的仪器</h4><p>emit 时机械门（caps、claims 表、env sweep、结构、行号钉、commit 规范）→ author 自循环 refine → 独立 reviewer → owner。越贵的仪器越少被打扰。</p></div>
+</div>
+
+<h3>2.2 单元与阶段</h3>
+<p class="legend">topic → slice → stage。蓝框 = 合约冷会话（独立性是买来的）；其余按需复用暖会话。</p>
+<div class="pipe">
+  <span class="st cold">plan-validate</span><span class="arr">→</span>
+  <span class="grp"><span class="st">split</span><span class="arr">⇄</span><span class="st cold">split-check</span></span><span class="arr">→</span>
+  <span class="grp"><span class="st cold">spec</span><span class="arr">→</span><span class="st cold">precheck</span><span class="arr">⇄</span><span class="st">revise</span><span class="arr">→</span><span class="st">impl</span><span class="arr">→</span><span class="st cold">postcheck</span><span class="arr">⇄</span><span class="st">fix</span><span class="arr">→</span><span class="st">turnover</span></span>
+  <span class="arr">× N slices →</span>
+  <span class="st cold">close-out</span>
+</div>
+<ul>
+  <li><b>拓扑级</b>：plan-validate 读 plan；split 产出 <code>charters.md</code> 与机器索引 <code>id:risk:repo:title[:after=NN]</code>；split-check 复推导八条粒度准则；close-out 出治理报告并提 history consolidation。</li>
+  <li><b>切片级</b>：spec（含 claims 表、flip gate、commit-unit 表）→ precheck（spec-ready 契约逐条）→ impl（author 派 implementer，逐 commit-unit 登记 <code>record.sh progress</code>）→ postcheck（独立底线，acceptance 亲自重跑，每条发现打 <code>leak_class</code>）→ turnover（指针 + 增量，供下一 slice）。</li>
+  <li><b>完成只有一种方式</b>：<code>session/record.sh emit</code>——校验 nonce（单次、角色绑定）、封闭词汇的 verdict、角色字段、owed 集合，跑 emit 时机械门，再追加 handoff 记录。Stop hook 让会话在没有记录前无法结束回合。</li>
+</ul>
+
+<h3>2.3 存储面（store surfaces）</h3>
+<div class="tw"><table>
+  <tr><th>写者</th><th>surfaces</th><th>用途</th></tr>
+  <tr><td>ferry</td><td><code>run stage attempts halt sessions ledger</code></td><td>位置、指纹与预算、停车原因、会话身份、事件账</td></tr>
+  <tr><td>session</td><td><code>heartbeat handoff progress decisions notify_events</code></td><td>活性心跳、完成记录、commit-unit 账、DP、CLI 通知事件</td></tr>
+  <tr><td>operator</td><td><code>rulings notify</code></td><td>owner 裁定、通知策略</td></tr>
+  <tr><td>session · operator</td><td><code>observations learnings</code></td><td>学习闭环的两个输入面</td></tr>
+  <tr><td>ferry · operator</td><td><code>slices</code></td><td>机器切片索引（绑定不可变、after= 只向后）</td></tr>
+  <tr><td>gate / any</td><td><code>gates</code> / <code>audit</code></td><td>门的每次断言（sha+tree+dirty 钉住）/ 审计行</td></tr>
+</table></div>
+
+<h3>2.4 活性、收敛与经济</h3>
+<div class="grid2">
+  <div>
+    <p><b>活性栈</b>（<code>lib/watch.sh</code>）：进程 pid+starttime → Stop-gate 阻断计数 → 心跳 → CPU 速率下限 → 屏幕分类（working / awaiting_input / error_retryable / quota_exhausted / backend_overloaded / modal.* / unknown）→ 协议空闲事件（idle_prompt）→ nudge 梯子 → 时钟跳变豁免。时间只经 <code>_wt_now/_wt_sleep</code> 两个接缝读取，自检在虚拟时钟上确定性地跑。</p>
+    <p><b>收敛</b>：attempt 指纹（prompt 体 ⊕ owed 哈希 ⊕ manifest 输入 ⊕ 上次失败类别，K=4）→ <code>no_novelty</code>；review 双循环用 severity-trend 谓词；split 循环用索引字节不变的 fixpoint。</p>
+  </div>
+  <div>
+    <p><b>经济</b>：每 (slice, stage, round) 的尝试预算；slice / topic 墙钟预算只计工作时间（停车时间记入 credit）；relaunch 是一次 redrive。</p>
+    <p><b>停车词汇（封闭）</b>：dead · idle · stall_record · stall_mismatch · owed_miss · no_novelty · budget_attempts · budget_wallclock · template_error · plan_changed · workflow_changed · unknown_modal · unknown_screen · operator_interference · operator_stop · store_fault · backend_quota · backend_overloaded · class_u · blocked · disagreement · push_gate · broken。每个都有 <code>operations.md</code> §3 的 playbook。</p>
+  </div>
+</div>
+
+<h3>2.5 配置、钉与学习闭环</h3>
+<ul>
+  <li><b>配置</b>四层：<code>defaults.kv</code> ⊂ 用户 <code>config.kv</code> ⊂ <code>&lt;ws&gt;/config/topic.kv</code> ⊂ <code>slice.NN.&lt;agent&gt;.kv</code>；<code>schema.kv</code> 封闭词汇；项目适配器 <code>project.kv</code>（repo、branch、build/lint/test/acceptance、commit.*、doc.repo）。</li>
+  <li><b>钉</b>：plan 在 split 时钉哈希；工作流子树对象 <code>HEAD:&lt;prefix&gt;</code> + 脏指纹在 run 初始化钉住；任何漂移都是一次响亮的停车而非静默采用。</li>
+  <li><b>学习闭环</b>：stage / pilot 写 <code>observations</code>，postcheck 写 <code>learnings</code>（leak_class ∈ precheck | conformance | gate | novel）→ 收割进 <code>iteration-log/INDEX.md</code> + <code>open/*.md</code>（每条必带可证伪预期）→ 两个独立锚点才提升（structural &gt; script &gt; prose）→ 未经实战的修复进 <code>self-check/validation-debt.md</code>，只凭触发证据关闭。</li>
+  <li><b>自检</b>：<code>self-check/check.sh</code>，27 个 checks + 12 个 drills（影子树 + mock CLI 在真实 tmux 里走完整个循环），每条断言两方向（known-bad 必须红），运行前后对树做快照，采集下限拒绝空集合。</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="benefit">3. 收益（可度量）</h2>
+<div class="tw"><table>
+  <tr><th>收益</th><th class="n">读数</th><th>来源</th></tr>
+  <tr><td>precheck 缺陷移除效率（handoff 捕获 / learnings 泄漏）</td><td class="n">82 / (82+18) = 82.0%</td><td>4 topic，Capers Jones 正式审查基准约 85%</td></tr>
+  <tr><td>emit 门在会话内吸收的拒绝（最近一个 topic）</td><td class="n">446 次断言 / 26 FAIL / 0 停车</td><td>claims 10 · env_sweep 8 · line_pins 7 · caps 1，全部会话内修复重发</td></tr>
+  <tr><td>最近 topic 的生产代码缺陷</td><td class="n">0</td><td>7 轮 precheck + 8 轮 postcheck，author 独立复读亦为 0</td></tr>
+  <tr><td>停车等待：接了通知（bark）vs 没接</td><td class="n">p90 2h19m vs 15h27m</td><td>50 次停车，4 topic；超 6h 的 7 次全在未接通知组</td></tr>
+  <tr><td>门可证明能红</td><td class="n">9/9 gate 函数</td><td>每个 <code>gates_*</code> 至少一条 red-proof（60-gates 下限）</td></tr>
+  <tr><td>一次修正传播到的地方</td><td class="n">1 处</td><td>stage 契约、店面写者、后端能力均单一来源；verdict 词汇由 stages.tsv 单一声明</td></tr>
+</table></div>
+<p>不可度量但结构性的收益：author→reviewer 的前提注入通道被 ferry 组 prompt 关闭；agent 只写工件，永不写 prompt/config；每个数字要求印出实例；每条缺席断言要求范围。</p>
+
+<!-- ============================================================ -->
+<h2 id="cost">4. 成本（可度量）</h2>
+<div class="tw"><table>
+  <tr><th>成本项</th><th class="n">读数</th><th>说明</th></tr>
+  <tr><td>阶段时间（4 topic，275 对 spawn→record）</td><td class="n">81.0 h</td><td>spec 20.5% · impl 18.0% · precheck 17.3% · postcheck 15.0% · split-check 8.4%</td></tr>
+  <tr><td>其中冷会话</td><td class="n">64%（≈52 h）</td><td>约 86% 是合约（独立性、authority chain），约 7.5 h 是复活失败等退化</td></tr>
+  <tr><td>冷税：同一轮工作，冷 / 暖</td><td class="n">2.7×–3.3×</td><td>impl 0.97× 是对照——成本是工作而非找地的阶段无税</td></tr>
+  <tr><td>拓扑级仪式（plan-validate + split 环 + close-out）</td><td class="n">1h12m – 7h27m / topic</td><td>6× 跨度；最贵的不是最宽的 topic，是 split 争议最多的（12 次 flag）</td></tr>
+  <tr><td>owner 打断</td><td class="n">50 次停车 / 4 topic</td><td>中位等待 3m02；六个 topic 的 ledger 共 11 次 disagreement 停车，9 次事后为假阳性（全新发现被计成未收敛）</td></tr>
+  <tr><td>维护面</td><td class="n">191 文件 · 2.74 MB · ~37K 行</td><td>runtime 9.1K（38% 注释）· checks 13.8K（26% 注释）· 文档 346 KB · INDEX 265 KB · VD 196 KB · open/ 418 KB</td></tr>
+  <tr><td>一次维护回合</td><td class="n">数十次提交，40 次复审</td><td>每次复审都有产出——因为仪器每次都换（见 §6）</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="eval">5. 三角度评估：完备 · 简洁 · 优雅</h2>
+
+<h3>5.1 完备</h3>
+<div class="verdict"><b>结论：机器一侧近乎完备；人这一腿和「散文里的事实」是两个系统性缺口。</b> 树自己的 70 条未结观察几乎都落在这两类。</div>
+<div class="grid2">
+  <div class="card"><h4><span class="tag ok">强</span>已经封闭的</h4>
+    <ul>
+      <li>每个存储读取分辨 fault / absent；每个门有 red-proof；每条断言两方向；采集下限拒绝空集合。</li>
+      <li>三个循环各有收敛谓词；活性栈六层信号；配额 / 过载 / 重试后端各自有停车类别而非当作 idle。</li>
+      <li>计划与工作流漂移都被钉住；nonce 围栏防止会话冒充；封闭词汇一处声明。</li>
+      <li>学习闭环有格式约束（可证伪预期必填；收割数统计是格式不是指令）。</li>
+    </ul>
+  </div>
+  <div class="card"><h4><span class="tag warn">缺</span>还开着的（按机制归并）</h4>
+    <ul>
+      <li><b>人这一腿</b>：停车页面「送达」仍不可观测（park-page-arrival-unobserved）——但 ack 与重发已落地：pager 会重发，<code>launch.sh ack</code> 只<b>暂停</b>一个 <code>notify.ack_timeout</code> 窗口而不终止梯子；pilot 没有收件箱；<code>stop</code> 停的是 ferry 不是 stage；disagreement 停车不带可裁决问题集而 class_u 带。</li>
+      <li><b>机器决定却读散文</b>：severity-trend 只读计数，reviewer 早已在散文里写了「全新 / 残留」；refine 因触顶终止只有 1/5 的记录用字段说了；DP / progress 只能追加不能声明「被取代」；ruling 违反被评为 wording 照样过 ready。</li>
+      <li><b>观测缺口</b>：implementer 派遣不可见（模型 / effort 是请求不是事实，派遣文本不落盘）；spec 的 claims 只在 emit 时验一次，不在落地 tip 重跑；spec 的 gate 计划与 gates 面没有 join；运行质量（门拒绝数）到 close-out 才可见。</li>
+      <li><b>规则 / 输入错配</b>：ruling 只送到命名的 slice；env_sweep 的绝对路径臂把散文里的 <code>/token</code> 读成路径；effort 下限跨模型比较；plan 是被评审最少的工件。</li>
+    </ul>
+  </div>
+</div>
+
+<h3>5.2 简洁</h3>
+<div class="verdict"><b>结论：机制是简洁的，载体不是。</b> 同一个事实平均写在 4–6 个地方（代码注释、设计文档、运行文档、INDEX 行、VD 行、open/ 文件），修正时必须全部命中——这正是树自己度量到最多次的失败形态（closed-vocabulary-unpinned、an-edit-has-two-ends、「三处文件里的计数过期」）。</div>
+<div class="tw"><table>
+  <tr><th>度量</th><th class="n">读数</th><th>含义</th></tr>
+  <tr><td>runtime-scripts 注释占非空行比例</td><td class="n">38%</td><td><code>notify_event.sh</code> 74%、<code>derive_report.sh</code> 56%、<code>bark.sh</code> 56%、<code>watch.sh</code> 49%、<code>derive_cost.sh</code> 48%、<code>probe.sh</code> 45%</td></tr>
+  <tr><td><code>config/defaults.kv</code></td><td class="n">214 注释行 / 44 键</td><td>校准史写在配置里，每个键平均 5 行往事</td></tr>
+  <tr><td>发给每个阶段的参考文档中带「measured / 日期 / topic 名」的行</td><td class="n">≤ 2%</td><td>review-standards 21/773 · operations 16/608 · protocol 0/249 · author 卡 4/286 · architecture 16/700——规则文档基本是规则；年表问题集中在代码注释、配置与学习闭环的家</td></tr>
+  <tr><td><code>iteration-log/INDEX.md</code></td><td class="n">265 KB / 1065 行</td><td>平均每行 249 字节；单元格是论文，表格被当数据库用。<b>本回合已迁移</b>（§6.3 A）：字段进每条 <code>entries/&lt;id&gt;.md</code> 的头块，INDEX 改为生成，叙事进 <code>NOTES.md</code>——字节数未降（行仍是原单元格全文），降的是「家」的数量：一个事实一处</td></tr>
+  <tr><td><code>self-check/validation-debt.md</code></td><td class="n">196 KB / 167 行</td><td>平均每行 1.2 KB</td></tr>
+  <tr><td>因触顶被拆成「半」的文件</td><td class="n">ferry 8 半 · 50/51/52-record · 60/62-gates · 98/99-report</td><td>拆分边界是行数而非概念；共享全局</td></tr>
+  <tr><td>为 routing 的一个可选字段写的 Markdown 阅读器</td><td class="n">≈30 个 CommonMark 形状</td><td>fence / 引用 / setext / 缩进代码 / CRLF 全在 awk 里；一个 kv 键就能装下的东西</td></tr>
+  <tr><td>重复的小工具</td><td class="n">≥4 对</td><td><code>fmt_dur</code>/<code>_st_dur</code>、<code>cells</code>/<code>_pty_cells</code>、<code>kv()</code> ×2、claims 头提取 ×2</td></tr>
+</table></div>
+<p>从第一性原理看，这些都是同一个问题：<b>合约（必须成立什么）、机制（代码）、证据（哪次运行）、历史（为何改）四种知识交织在每个文件里</b>。Ousterhout 的判据是注释应降低复杂度而非叙事；Diátaxis 的判据是 reference 与 explanation 必须分家；ADR 的判据是决定不可变、变更即新纪录。树的机制符合这三条，树的文本不符合。</p>
+
+<h3>5.3 优雅</h3>
+<div class="grid2">
+  <div class="card"><h4><span class="tag ok">优雅之处</span></h4>
+    <ul>
+      <li>「格式不可被点头敷衍，指令可以」——把每条纪律做成必填字段的一贯手法。</li>
+      <li>fault ≠ absent 贯穿每一层：store rc、config、ledger 读取、报告输出。</li>
+      <li>widening（抽象解释）用在 split 循环收敛：在更粗的域（索引字节）上计算不动点。</li>
+      <li>nonce 作 fencing token；tmux 只做结构、CLI 差异全在声明；时钟接缝让活性测试确定化。</li>
+      <li>学习闭环本身是一个认识论装置：可证伪预期、两锚提升、只凭触发关闭。</li>
+    </ul>
+  </div>
+  <div class="card"><h4><span class="tag warn">不优雅之处</span></h4>
+    <ul>
+      <li>工件合约挂在<b>拼写</b>上而不是事件上：<code>--halt class_u</code> 欠一份问题集文档，verdict 路由到的 class_u 不欠；disagreement 与 class_u 对同一 owner 准备程度相反。</li>
+      <li>代码是一本日记：日期、topic 名、测量数写在 runtime 注释里，与树自己「正式文档不带讨论代号」的精神相悖。</li>
+      <li>耐久之家是 Markdown 表格：多 KB 的单元格、正则解析的 blockquote 收割行、「adopted 就删文件、历史进 git」——读者需要 git 考古。</li>
+      <li>文档之间靠正则检查互相看齐（25-xref、30-closure 的 sweep_subjects、52-vocab）：这是把散文当数据的胶水。</li>
+      <li>bash 到了 9K + 14K 行：awk-in-string 的撇号陷阱同一天踩两次；每次 <code>state_get | grep</code> 都全量 md5。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="optimize">6. 深度优化方案</h2>
+<p><b>第一性原理</b>：① 稀缺资源依次是 owner 注意力、模型时间、维护者注意力；② 机器决定的事实必须是字段，散文给人读；③ 一个事实一个家，其余皆指针或推导；④ fault ≠ absent，缺席必带范围；⑤ 判断流向最便宜的仪器。方案按「已落地 / 下一步 / 结构性」三档，每项给出危害、为何现有机制吸收不了、需求已被谁证明，以及可证伪预期——这是树自己的 admission discipline。</p>
+
+<h3>6.1 本回合已落地（P0）</h3>
+<div class="tw"><table>
+  <tr><th>变更</th><th>解决的缺口</th><th>证明</th></tr>
+  <tr><td><b>把 substantive 计数拆成 <code>new</code> / <code>repeat</code></b>：reviewer 在 round ≥ 2 且有实质发现时必填 <code>--findings-new --findings-repeat</code>（和 = substantive）；severity-trend 谓词只在 <code>repeat ≥ 1</code> 且非递减时停车；全新发现每轮都有的循环由 <code>review.max_rounds=8</code> 兜底（已完成 topic 的最长评审环是 5 轮）；停车文本带上 new/repeat。</td><td>11 次 disagreement 停车里 9 次假阳性（3 topic，5 锚点，promotion-ready）；六个归档 handoff 面的 86 条 round≥2 记录都不带该字段，按「全部 repeat」读，解释不变。</td><td>45-halt 八个方向、50-record emit 算术、98-report 覆盖行；VD-60 / VD-61 待实战。</td></tr>
+  <tr><td><b><code>refine.terminated_on=clean|bound</code></b>：author emit 在 rounds = <code>refine.max_rounds</code> 时必填（计数分不清「第三轮干净」与「被 cap 切断」）；低于 cap 只可能是 clean，由 emit 推导，声明 bound 被拒。8 个 author prompt 教它，52-vocab 把 9 处陈述钉成一套。</td><td>5/5 spec 触顶终止，仅 1 条用字段说了（refine-termination-unfielded）。</td><td>50-record 五个方向；VD-62 待实战。derive_report 已到 800 行上限，统计行留给拆分。</td></tr>
+  <tr><td><b>取代通道（append-only ≠ write-once）</b>：progress 同一 cu 再登记新 sha 时新行带 <code>supersedes=&lt;old&gt;</code>（同 sha 重复登记被拒）；decisions 用 <code>record.sh decision --amend</code> 重记同一 DP id，新行带 <code>amends=&lt;t&gt;</code> 并重回 pending_audit；§9 C1 的评审范围改为「存活集合」，C0 对被修正的 DP 重新审。</td><td>append-only 被实现成 write-once（append-only-no-supersede，两锚点、两条写路径）。</td><td>51-record-commit 四个方向、35-verbs 四个方向；VD-63 / VD-64 待实战。</td></tr>
+  <tr><td><b>源码注释只留合约与指针，不带年表</b>：规则进 operations.md §7（该节其后整体拆出为 maintenance.md §1，operations.md §7 留存根指路）；新检查 <code>96-comment-chronology</code> 是语法规则（runtime-scripts/ 与 config/ 的注释行出现日期即红，无宽限名单）；15 个文件 43 行带日期注释全部改写——cap 校准史先迁入 INDEX 头部台账再从 <code>defaults.kv</code> 撤下（注释 214→132 行），notify hook 73 行头注释缩为 39 行合约加指针（141→102 行）；迁移前逐条 grep 确认事实在 iteration-log 有家，没有的先搬再删。</td><td>§5.2 的全部度量；同一事实 4–6 个家；本回合三个参考文件在 60 行规则文本下触顶。</td><td>检查两方向 + 文件数下限 + grep 错误状态与「无匹配」分开；整体注释占比仍是 38%（43 行只占注释量 1%），作为后续「占比」职责的基线记入条目。</td></tr>
+</table></div>
+
+<h3>6.2 owner 批准后本回合落地（P1 → 已落地，每项独立提交、自检全绿）</h3>
+<p>owner 的裁决：「核心需求是简洁、完备、workflow 尽可能自主完成高质量 delivery；复核一致就按推荐来。」复核后第 1 项收敛为最小形态、第 2 项加了重发上限，其余照推荐。执行顺序 7 → 4 → 2 → 3 → 1 → 6 → 5，第 8 项独立成回合（§6.3 A）。</p>
+<div class="tw"><table>
+  <tr><th>#</th><th>落地</th><th>证明 / 待实战</th></tr>
+  <tr><td>7</td><td><b>触顶拆分</b>：<code>derive_report.sh</code> §4 整体移入 <code>lib/report_routing.sh</code>（392 + 431 行）；review-standards 的 15 段度量叙述缩为条目指针（764 行）。规则不删，只搬。</td><td>99-routing 假树带上新 lib；98-report 锚点改为行首规则。</td></tr>
+  <tr><td>4</td><td><b>派遣落盘</b>：impl 的 owed 集增加 <code>dispatch</code>（至少一份非空 <code>slices/NN/dispatch.*.md</code>，「按发出原文」）；owed.sh 一个新 case，prompt/卡片各一句。</td><td>40-owed 缺 / 空 / 好三向；drill mock 写派遣文件；VD-65。</td></tr>
+  <tr><td>2</td><td><b>pager</b>：watchdog 在 park 后不退出，每 <code>notify.repage_interval</code>（2700s，落在实测接通知尾部 2–6h 之内）重发一次，直到 <code>launch.sh ack</code>、halt 解决、stop、或 <code>notify.repage_max</code>（6）后发一条「已停止」；push_gate 从不重发；relaunch 接管在页的 watchdog；<code>status --halt</code> 打印重发次数与 ack 时刻。ack 是 audit 面上按 halt_id 键的一行——halt 面保持单写者。<br><b>后续更正</b>：ack 不再<b>终止</b>重发，只<b>暂停</b>一个 <code>notify.ack_timeout</code> 窗口然后恢复——判据是 ack 行的<b>新鲜度</b>而非其<b>存在</b>（「有人认领了这次停车」不等于「存在一条 ack 行」，而卡片要求 pilot 把 ack 当第一动作）；实测：pilot 在 park 后 71s ack，owner 8h09m35s 后才到，其间 6 次重发被吞掉。</td><td>85-watchdog 对着一个记录型 transport 跑满全部分支（含「真的等了间隔」）；35-verbs 驾驭 ack；VD-66。</td></tr>
+  <tr><td>3</td><td><b>ruling 的 topic 范围与「飞行中的门」</b>：<code>rule --topic</code> 在行上加 <code>scope=topic</code>，<code>--slice</code> 仍指它回答的 halt；新 <code>lib/rulings.sh</code> 是「哪些 ruling 对这个 slice 生效」的唯一选择器，compose 的 <code>rulings.pending</code> 与 emit 门共用。emit 时若有 <code>t</code> 晚于本 attempt <code>spawn_t</code> 的 ruling 指向本 slice（或 topic 范围），拒绝并点名文件与旗标，直到 <code>--ruling-ack &lt;slice&gt;.&lt;n&gt;,…</code> 恰好命名该集合；记录带 <code>rulings.midflight=</code>。halt 路径也在门内。record.sh 因此触顶，四个 <code>_emit_*</code> 原样移入 <code>session/emit_checks.sh</code>。</td><td>32-compose（topic 行进 03/00/从未有 ruling 的 slice）、35-verbs、50-record 八向；VD-67 / VD-68。</td></tr>
+  <tr><td>1</td><td><b>disagreement 的问题集就是 reviewer 自己的段落</b>（最小形态，非 ferry 拼文档——ferry 比 reviewer 多知道的只有计数）：review 模板新增 <code>## 3. absorption</code>（结构门每份评审都要；round 1 一行；round ≥2 逐条处置上一轮发现 + 一行「是否收敛、选哪项、为何」）；停车文本点名两份评审文件并指向后一份的 §3。</td><td>45-halt 钉停车文本；fixtures / drill mock 写该段；VD-69。</td></tr>
+  <tr><td>6</td><td><b>env_sweep 先改臂再扩范围</b>：绝对路径只在有第二段（<code>/a/b</code>）或 <code>:NN</code> 钉时算主张。用同一方法重放六棵归档树：turnover FAIL 11/32 → 3/32、charters 3/6 → 1/6、closeout 2/6 → 0/6、control 15 → 14；所有单段散文命中消失，幸存者全是真缺陷（逐条印在条目里）。预登记预期成立，门才扩到 charters / turnover / closeout；conformance 与 validation note 留在门外（路径片段、归档即死的规划树引用）。</td><td>60-gates 三向；50-record 一份带死绝对路径的 turnover 被拒、去掉后通过；VD-70。</td></tr>
+  <tr><td>5</td><td><b>gate 计划 join 到 gates 面</b>：impl/fix emit 要求 project.kv 声明的每个 gate（build / lint / test / acceptance）都有钉在 emit 树上的 PASS 行（或具名 SKIP），一次拒绝点名全部缺失项与各自命令——读「声明集合」而非解析计划（§4.5 禁止计划收窄声明，故无需解析器）。<b>spec claims 表在落地 tip 重解析</b>：<code>gates_claims --at-tip</code> 以独立 gate 名 <code>spec_claims_tip</code> 记录，<code>baseline</code> 标记的行跳过；放在 impl/fix emit（postcheck C3 读记录，记录必须先于 reviewer 出现），只记录不拒绝——试运行，live FAIL 证实为真再升级为拒绝。</td><td>51-record-commit（声明 build+lint 后一次点名三个；跑两个剩一个；SKIP 行存在；emit 落下 spec_claims_tip 行）、60-gates 两向；VD-71 / VD-72。</td></tr>
+</table></div>
+
+<h3>6.3 结构性（P2，经得起长期考验的形态）</h3>
+<div class="cards">
+  <div class="card"><h4>A. 学习闭环的家从表格变成记录 —— <b>已落地</b>（独立回合）</h4>
+    <p>每条机制一个文件 <code>iteration-log/entries/&lt;id&gt;.md</code>（<code>open/</code> 改名——closed 不再删文件后它就是误称），H1 下一个 <code>```entry</code> 头块：<code>status · hook · anchors · landing</code>，即原行的单元格原文；121 条（72 条原有文件加头块，49 条从无文件的行创建：27 closed、22 adopted）。<code>INDEX.md</code> 由 <code>gen-index.sh</code> 生成，自己声明不可手编；<code>NOTES.md</code> 原样保存全部收割笔记、裁决与 <code>harvest-completion</code> 台账；97-iterlog 读头块、重生成后 diff（陈旧或手编即红），台账臂读 NOTES、行读 INDEX。110 处指针改写。<b>诚实的读数</b>：INDEX 字节数没有降（hook 仍是整个单元格），降的是家的数量；VD 文件保留表格——它的行本来就是「一条记录 + closes_on 一列」，读者只有两个；「一行钩子 + 正文长文」是下一步，记在 VD-73 的反向读数里。</p>
+  </div>
+  <div class="card"><h4>B. 文档按 Diátaxis 分家，代码只留合约</h4>
+    <p>度量说明 runtime-docs 已基本是纯 reference（带年表标记的行 ≤ 2%）；真正的重复在三处：<code>design/</code>（explanation）复述 runtime-docs 的规则（architecture §12 的裁决登记本身就是「已在别处体现、此处再登记一份」）；代码注释复述文档与 iteration-log（38% 注释行）；INDEX 行复述 open/ 文件。建议：design/ 只写为何并指向条款；代码注释只写合约加 <code>see: &lt;entry-id&gt;</code>；测量与历史只住 iteration-log。收获是「同一句话写在两处又都错了」的形态失去土壤，25-xref / 30-closure 那类文档互检随之收缩。</p>
+  </div>
+  <div class="card"><h4>C. 合约挂在事件上而非拼写上</h4>
+    <p>owed 工件由「停车原因类别」决定：任何 class_u（不论 <code>--halt</code> 还是 verdict 路由）与 disagreement 都欠 <code>templates/halt.md</code> 形状的问题集，emit 与 park 同一份检查。<code>stop</code> 增加 <code>--fence</code>：拒绝收割停车之后产生的记录。</p>
+  </div>
+  <div class="card"><h4>D. 存储读路径</h4>
+    <p><code>state_get</code> 每次全量 md5，消费者用 <code>grep -E '(^| )k=v( |$)'</code> 自己切字段。收拢为 <code>state_rows &lt;surface&gt; k=v ...</code> 一个过滤原语 + <code>rec_field</code> 单一实现（现在 ferry / record / derive 各有一份），并把 <code>fmt_dur</code>、<code>cells</code>、<code>kv()</code> 去重。不改格式，只改入口。</p>
+  </div>
+  <div class="card"><h4>E. routing 的两个家收成一个</h4>
+    <p>plan 序言的 <code>route:</code> 行需要一个 CommonMark 子集阅读器（99-routing 钉了约 30 个形状）；<code>project.kv</code> 的 <code>route=</code> 不需要。建议 owner 裁定：plan 序言只允许 fenced kv 块或直接只认 <code>project.kv</code>；阅读器随之退役。</p>
+  </div>
+  <div class="card"><h4>F. 度量退化成本的仪表进 <code>launch.sh status</code></h4>
+    <p>运行中的 FAIL 数（gates 面一个过滤）、<code>mode_src</code> 退化冷会话数、当前 disagreement 的 new/repeat——三行文字，让「运行质量到 close-out 才可见」这条观察关闭。</p>
+  </div>
+</div>
+
+<h3>6.4 判定「做完了」的方法（沿用树自己度量出的两条最高产仪器）</h3>
+<ol>
+  <li><b>从原始存储重推导每个印出来的数字</b>——不是复读文档。</li>
+  <li><b>把机制跑在磁盘上每一个真实工件上</b>，而不是一个 + fixtures：六个已归档 topic 树（原部署保存的归档）都能离线重放 derive_cost / derive_report / gates。</li>
+</ol>
+
+<h3>6.5 监看批次（2026-09-06；车道分支 <code>wf-monitor-batch</code>，随下一个 owner park 窗口落地）</h3>
+<p>两份未实施提案（网页监看 + 并行维护车道）经第三轮零 lineage 冷复核后，owner 裁决：<b>网页监看整体延后</b>——peek 动词出现后它唯一剩余的驱动「多 topic 总览」从未发生（全部 7 个 delivery topic 的 ledger 时间窗零重叠、严格串行，实测）；<b>本批四项 = 车道规程 → 几何钉死（window-size manual）→ peek 动词 → status --rounds 读出器</b>。重开条件已写进两处槽位登记（migration-and-acceptance §5、config-and-adapters §6）：第一次真实两 topic 并行，或 owner 明确要。</p>
+<div class="tw"><table>
+  <tr><th>#</th><th>落地</th><th>证明</th></tr>
+  <tr><td>1</td><td><b>并行维护车道</b>（operations.md §7 四条；现为 maintenance.md §1）：A 类（自足缺陷）/ B 类（依赖 topic 结果）分轴 + ADOPT-SAFE / ADOPT-BLOCKED 正交落地轴；git worktree 分支即队列（pin 两项都在 $WROOT 内求值，对 live topic 不可见）；owner park 是落地窗口——不合格三类（调查中 / adoption 被外部条件挡住 / fault 类诊断未闭）+ workflow_changed 是采纳门本身；ruling-gated park 上采纳顺延到 ruling 之后。把已在发生的实践写成规程。</td><td>纯文档；--changed 门 12/12。</td></tr>
+  <tr><td>2</td><td><b>几何钉死（window-size manual）</b>：<code>pty_spawn_cold</code> 钉死 spawn 几何（attach——含只读——永久改写 pane 尺寸不回弹，是 live topic 上实测发生的危害：pre-pin 时代的 stage log 带第 52 行锚点对声明 50——受影响 log 数是移动靶，冷读时 7/9、终验时 8/9，随旧树继续运行而长）；钉不住的 spawn 拒绝且不留孤儿 session。</td><td>80-pty 经真实 spawn 路径断言（配 unpinned 对照 session 必须收缩）；变异：删 pin 行两 arm 红（几何移到 80x23）。backend-seam §4 与 operations §5（含落地前的完整还原配方）。</td></tr>
+  <tr><td>3</td><td><b>peek 动词</b>：「看」的那一半——capture-pane 零客户端、零几何影响（实测 + 80-pty 断言）；look/type 分工，attach 保持打字路径的摩擦，<code>--attach</code> 只打印命令。读者分支照树纪律（corrupt 拒绝 / 空≠缺席 / 死会话指向 pane log / pending 不给跑不通的命令）；角色过滤 0 命中说出来并报面持有哪些，implementer 自答（author pane 里的子代理，永远没有自己的 session 行）；<b>无 name= 的行计入并说明，静默在结构上不可能</b>（守卫与打印器谓词不同——第二轮冷读者量出四种形状里三种仍 rc=0 零字节后钉的）。</td><td>36-verbs-readers 行为套件 + 80-pty 真捕获全路径（内容 + 零客户端断言）；每个规则分量按名变异红（含裸 <code>=name</code> 目标形态）。文档四处（arch §9 主枚举、operations §2、pilot 卡、README）。</td></tr>
+  <tr><td>4</td><td><b>status --rounds 读出器</b>：per-stage per-round 时钟，纯 ledger reader（enter 开轮、advance 收轮、park 注记 reason 与间隙）——「时间花在哪」的一方读出器；pilot 手搓版曾静默丢事件 90 分钟。park 收口分层：轮内 park 取「后继 park 行 / ferry_start / 该 stage 下一事件」最先；轮外 park（无 stage 或无开轮——第二轮冷读者的 phantom 形状）入尾行并点名 stage，由「后继 park / ferry_start / 任意 enter」收口——裸 record 不算停机结束（workflow_changed park 后 10s 的外来 record 不得把间隙钉在 10s）。开放轮只在 ledger 前沿显示 RUNNING、其后 OPEN；以 <code>event=complete</code> 结尾的 ledger（全部归档 topic 皆然）冻结在完成时刻——归档读数可复现、不随挂钟增长（此前 prw 两轮显示 25d19h RUNNING）。raw 对账全 store：五个新归档差秒级（含逐条精确相等），最老的归档 topic 读 174573s 对 parked_total 20296——三个裁决类 park 旧时代从未记账（现行 resume 会记），reader 是诚实的 park 普查、parked_total 是预算 credit。launch.sh 因此触 cap.source_file=800，按 cap 指的缝拆出 <code>lib/readers.sh</code>。</td><td>36-verbs-readers 行为套件（自 35-verbs 沿 doc-closure/behaviour 缝拆出）；五个收口分量 + 冻结适用条件 + keyed 前沿（keyless 行不降级运行轮、keyless park 清前沿）+ 哨兵键 + park 行归属，各自变异按名红。live 对账：5 个已收口 park 与 audit 逐条零差；全部 6 个归档 store 跑通零异常、零 RUNNING。</td></tr>
+</table></div>
+<p>开发期三条实测教训记入条目：① <code>state_set</code> 从 stdin 读 body，check 里不接管道的调用会吃掉并行 runner 分发后续 check 名字的管道——九个 check 静默未启动，被 runner 的 absent-rc 下限抓住；② <code>read</code> 的 IFS-tab 折叠连续 tab（空字段使后续字段整体左移）；③ awk 单空格 <code>split</code> 是特殊 whitespace 规则（计数是 n 不是 n-1）。收尾验证按 §7 读者表由一个零 lineage 冷会话完成（裁定 FIX FIRST、四必修四低修全部落地并补 arm 钉死），六遍自复核之外的第七只眼找到了前六遍的全部盲区——peek 的角色过滤静默、rounds 的 warm 恢复读反、四工件对账数互矛盾、车道 park 词表漏八项——每一条都是冷读才撞得上的形状。</p>
+
+<!-- ============================================================ -->
+<h2 id="giants">7. 站在巨人肩膀上</h2>
+<div class="tw"><table>
+  <tr><th>先例</th><th>它教的</th><th>在本树的对应 / 建议</th></tr>
+  <tr><td>Temporal 的 durable execution</td><td>事件历史是唯一真相；恢复靠确定性重放；activity 必须幂等；重试是声明不是代码</td><td>ledger + handoff 已是事件账；<code>recover_running</code> 是重放；建议：把「谁读了哪个 surface 的哪一行」也写进账，让 derive 能重放决策</td></tr>
+  <tr><td>Event sourcing / ADR（Nygard）</td><td>接受即不可变；修正是新记录并 <code>supersedes</code> 旧的；集合的可信来自不改写</td><td>decisions / progress 的取代标记（P0 第三项）；iteration-log 记录化（P2-A，已落地：closed 条目保留文件，INDEX 派生）</td></tr>
+  <tr><td>Diátaxis</td><td>tutorial / how-to / reference / explanation 四分且不混写</td><td>P2-B：review-standards、protocol、cards 只留 reference；operations 是 how-to；design 是 explanation</td></tr>
+  <tr><td>Ousterhout《A Philosophy of Software Design》</td><td>深模块：小接口大功能；复杂度 = 变更放大 + 认知负担 + 晦涩；注释应写代码说不出的「为什么」</td><td><code>state.sh</code>、<code>owed.sh</code> 是深模块；注释年表化是「变更放大」的直接来源（P0 第四项）</td></tr>
+  <tr><td>OpenHands 的 stuck detector</td><td>用 (tool, content) 指纹判重复，忽略 id 与指标；阈值保守（4+）；单调独白也是一种卡死</td><td>K=4 指纹与之同构；「每轮都有全新发现」的独白形态需要轮数上限（P0 第一项的 <code>review.max_rounds</code>）</td></tr>
+  <tr><td>PagerDuty escalation / acknowledgement timeout</td><td>未确认按策略升级；已确认过久重新触发；「发出」不等于「送达」</td><td>已落地（§6.2 第 2 项）：watchdog pager + <code>launch.sh ack</code>，上限后发「已停止」；acknowledgement-timeout 那一半按零实例推迟</td></tr>
+  <tr><td>Kiro / GitHub Spec Kit（spec-driven development）</td><td>requirements → design → tasks 三件工件落盘；hooks 在事件上自动对照 spec 检查漂移</td><td>spec.md / charters / progress 已对应；已落地（§6.2 第 5 项）：impl/fix emit 在落地 tip 重解析 spec claims 并记录 <code>spec_claims_tip</code>，即 Kiro 的「drift check」</td></tr>
+  <tr><td>Bazel / Nix 的 hermeticity</td><td>所有输入内容寻址、未声明依赖即不可复现</td><td>attempt 指纹含 manifest 内容哈希；rulings bundle 按内容寻址——已到位</td></tr>
+  <tr><td>Capers Jones《Software Defect Removal Efficiency》</td><td>正式审查约 85% DRE；&gt;95% 需审查 + 静态分析 + 测试叠加</td><td>precheck 82% 处在基准上；emit 门就是静态分析那一腿</td></tr>
+  <tr><td>Mutation testing</td><td>测试的价值以杀死的变异体计；杀不死任何变异体的断言是空的</td><td>树的 known-bad / 两方向 / 采集下限就是手工变异测试；建议把「每个新臂附一次源头变异」写成 check 模板的字段</td></tr>
+</table></div>
+<p class="muted">来源：<a href="https://temporal.io/blog/temporal-replaces-state-machines-for-distributed-applications">Temporal</a> · <a href="https://jack-vanlightly.com/blog/2025/11/24/demystifying-determinism-in-durable-execution">Vanlightly on determinism</a> · <a href="https://www.anthropic.com/engineering/building-effective-agents">Anthropic, Building effective agents</a> · <a href="https://diataxis.fr/">Diátaxis</a> · <a href="https://icepanel.io/blog/2023-03-29-architecture-decision-records-adrs">ADR</a> · <a href="https://blog.pragmaticengineer.com/a-philosophy-of-software-design-review/">Ousterhout（书评）</a> · <a href="https://docs.openhands.dev/sdk/guides/agent-stuck-detector">OpenHands Stuck Detector</a> · <a href="https://support.pagerduty.com/main/docs/escalation-policies">PagerDuty escalation policies</a> · <a href="https://kiro.dev/">Kiro</a> · <a href="https://bazel.build/basics/hermeticity">Bazel hermeticity</a> · <a href="https://en.wikipedia.org/wiki/Mutation_testing">Mutation testing</a>。</p>
+
+<!-- ============================================================ -->
+<h2 id="map">附录 A. 文件地图</h2>
+<div class="tw"><table>
+  <tr><th>区域</th><th>内容</th><th class="n">规模</th></tr>
+  <tr><td><code>design/</code></td><td>architecture · backend-seam · state-and-liveness · review-and-slices · config-and-adapters · migration-and-acceptance（行为契约表 + 已定裁决登记）</td><td class="n">6 文件 · 180 KB</td></tr>
+  <tr><td><code>runtime-docs/</code></td><td>protocol（流程）· operations（playbook、维护规则）· review-standards（契约、清单、严重度、收敛）· cards/{author,reviewer,pilot} · templates/{spec,review,halt} · templates/prompts/×13</td><td class="n">review-standards 786 行（cap 800，下次触碰欠一次拆分）；operations 645 行；protocol 268 行</td></tr>
+  <tr><td><code>runtime-scripts/</code></td><td>launch · ferry（+9 个 lib 半，新增 rulings、report_routing）· watchdog（含 pager）· monitor · probe · derive_cost · derive_report · session/{record,emit_checks,heartbeat,notify_event} · backends/pty_tmux · transports/bark</td><td class="n">30 文件 · 9,363 行</td></tr>
+  <tr><td><code>config/</code></td><td>stages.tsv · defaults.kv（新增 notify.repage_*）· schema.kv · notify-presets.kv · backends/{claude,codex}.kv · profiles/*.json</td><td class="n">646 行</td></tr>
+  <tr><td><code>self-check/</code></td><td>check.sh（-j12、树快照、采集下限、维护 WARN）· fixtures · 27 checks · 13 drills（新增 drill-pager：真实 ferry 停车上的 pager / stop / ack 往返）· validation-debt.md（42 行未结，cap 50）</td><td class="n">14,535 行 shell；VD ≈217 KB</td></tr>
+  <tr><td><code>iteration-log/</code></td><td>entries/×121（每条一个 <code>```entry</code> 头块 + 正文）· INDEX.md（<code>gen-index.sh</code> 生成，121 行表）· NOTES.md（收割笔记、裁决、台账，1009 行）· TEMPLATE.md</td><td class="n">entries/ ≈976 KB；INDEX ≈219 KB（生成）；NOTES ≈70 KB</td></tr>
+</table></div>
+<p class="muted">带「measured / 日期 / topic 名」标记的行占比（度量于 2026-09-05，<code>grep -cE 'measured|20[0-9]{2}-[0-9]{2}|&lt;topic names&gt;'</code>）：review-standards.md 21/773，operations.md 16/608，protocol.md 0/249，cards/author.md 4/286，architecture.md 16/700。对照：runtime-scripts 注释行 3,361 / 非空行 8,739。</p>
+
+<h2 id="glossary">附录 B. 词汇表</h2>
+<div class="tw"><table>
+  <tr><th>词</th><th>含义</th></tr>
+  <tr><td>ferry</td><td>驾驶循环：读表、组 prompt、spawn、等记录、推进、停车。从不解析工件散文。</td></tr>
+  <tr><td>owed</td><td>一个阶段在 emit 前必须存在的工件集合，由 <code>stages.tsv</code> 一列推导。</td></tr>
+  <tr><td>park / halt</td><td>同一事件的两个视角：flow 侧叫 halt，operator 侧叫 park；原因词汇封闭。</td></tr>
+  <tr><td>Class A / C / U</td><td>决定的三类：author 可自决 · 需 reviewer 并签（两把钥匙）· 只有 owner 能决。</td></tr>
+  <tr><td>cold / warm</td><td>新会话 vs 复用会话；round 1 的评审与 spec 冷是合约，其余暖是经济。</td></tr>
+  <tr><td>leak_class</td><td>postcheck 每条发现的归因：precheck 本可抓 · conformance 记录偏差 · gate 可机器拒绝 · novel。</td></tr>
+  <tr><td>两锚提升</td><td>同一机制在两个独立 slice/topic 各出现一次才可写成规则；单锚 DEFER。</td></tr>
+  <tr><td>VD 行</td><td>未经实战的修复登记，只凭触发证据关闭。</td></tr>
+  <tr><td>fault ≠ absent</td><td>「读不到」与「不存在」永不共用一个句子。</td></tr>
+</table></div>
+
+<p class="muted" style="margin-top:40px">本文件由维护回合生成并随该回合的提交更新；数字来自 <code>wc</code>、<code>derive_cost.sh</code>、<code>derive_report.sh</code>、自检摘要与 iteration-log 中的度量，而非复述。</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>delivery-workflow — a visual introduction</title>
+<style>
+  :root {
+    --bg: #f7f6f2; --fg: #1f2328; --muted: #57606a; --line: #d8d5cc;
+    --card: #ffffff; --accent: #0b5fa5; --ok: #1a7f37;
+    --code-bg: #eeece6; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1216; --fg: #e6e9ee; --muted: #9aa4b2; --line: #2b323c;
+      --card: #171c23; --accent: #5aa9ef; --ok: #4cc26b; --code-bg: #1f262f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.65 -apple-system, "Segoe UI", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 24px 80px; }
+  h1 { font-size: 28px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  h2 { font-size: 21px; margin: 44px 0 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  p { margin: 8px 0; }
+  .lead { color: var(--muted); font-size: 16px; }
+  code, pre { font-family: var(--mono); font-size: 13px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code-bg); padding: 12px 14px; border-radius: 8px; overflow-x: auto; line-height: 1.5; }
+  ul { padding-left: 22px; } li { margin: 4px 0; }
+  .muted { color: var(--muted); }
+  .pipe { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 12px 0; }
+  .pipe .st { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+  .pipe .st.cold { border-color: var(--accent); }
+  .pipe .arr { color: var(--muted); }
+  .pipe .grp { border: 1px dashed var(--line); border-radius: 10px; padding: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 14px 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card h3 { margin: 0 0 6px; font-size: 15px; }
+  .card p { margin: 0; font-size: 14px; }
+  table { border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>delivery-workflow, at a glance</h1>
+<p class="lead">Drives small-to-medium implementation work from a ready plan to reviewed, committed
+code — unattended by default, through an independent quality gate. This page orients;
+the authority is the tree itself: the flow table is <code>config/stages.tsv</code>, the
+contracts are <code>runtime-docs/</code>, the map is <code>README.md</code>. Where this page
+and those disagree, those win.</p>
+
+<h2>The flow</h2>
+<div class="pipe">
+  <span class="st cold">plan-validate</span><span class="arr">→</span>
+  <span class="grp"><span class="st">split</span><span class="arr">⇄</span><span class="st cold">split-check</span></span><span class="arr">→</span>
+  <span class="grp"><span class="st cold">spec</span><span class="arr">→</span><span class="st cold">precheck</span><span class="arr">⇄</span><span class="st">revise</span><span class="arr">→</span><span class="st">impl</span><span class="arr">→</span><span class="st cold">postcheck</span><span class="arr">⇄</span><span class="st">fix</span><span class="arr">→</span><span class="st">turnover</span></span>
+  <span class="arr">× N slices →</span>
+  <span class="st cold">close-out</span>
+</div>
+<ul>
+  <li><b>topic → slice → stage.</b> A plan is cut into function-shaped slices; each slice
+    advances through stages; the ferry (a table-driven loop) moves every handoff.</li>
+  <li><b>Outlined chips are contract-cold sessions</b> — round-1 reviews and spec start with a
+    fresh context, because independence is bought, not hoped for. Other stages reuse a warm
+    session: authoring context is the value.</li>
+  <li><b>Two loops, two convergence guards.</b> <code>precheck ⇄ revise</code> and
+    <code>postcheck ⇄ fix</code> iterate until the reviews stop finding substantive defects;
+    <code>split ⇄ split-check</code> iterates until the cut of the plan settles.</li>
+  <li><b>A stage completes only by emitting a record</b> into the store (nonce-authenticated) —
+    never prose. What the ferry reads is mechanical fields only.</li>
+</ul>
+
+<h2>Who does the work</h2>
+<div class="cards">
+  <div class="card"><h3>ferry — the loop</h3><p>A plain process, table-driven: select the next
+    stage, compose the prompt from template + manifest, spawn or reuse a session, wait for the
+    record, route on its fields. It never reads artifact prose and never reasons.</p></div>
+  <div class="card"><h3>author — writes</h3><p>Specs the slice, drives impl, writes conformance
+    and turnover. Its sub-agent, the <b>implementer</b>, executes one commit-unit per dispatch
+    and reports; the diff, not the report, is the authority.</p></div>
+  <div class="card"><h3>reviewer — the floor</h3><p>Independent lineage, re-derives every
+    load-bearing claim first-hand. Precheck gates the spec; postcheck gates the landed commits.</p></div>
+  <div class="card"><h3>pilot — optional middleware</h3><p>Routes and relays (rulings,
+    relaunch, notifications); never decides substance. A dead pilot degrades to the
+    owner-paged baseline — full-auto does not depend on it.</p></div>
+  <div class="card"><h3>owner — the decisions</h3><p>Class-U questions, pushes, disagreements
+    that do not converge. Everything else is machinery or agents.</p></div>
+</div>
+
+<h2>When it stops</h2>
+<p>Full-auto halts for exactly four things, and every park names itself — reason, detail, and
+the captured screen where relevant:</p>
+<table>
+  <tr><th>halt</th><th>meaning</th><th>the answer</th></tr>
+  <tr><td><code>class_u</code></td><td>an owner decision is owed</td><td><code>launch.sh rule</code> — the only resume path</td></tr>
+  <tr><td><code>blocked</code></td><td>the implementer cannot proceed</td><td>read the evidence; a ruling authorises the widening</td></tr>
+  <tr><td><code>disagreement</code></td><td>a review loop is not converging</td><td>the owner rules continue / split / redesign</td></tr>
+  <tr><td><code>push_gate</code></td><td>work landed; push is owed</td><td>the owner pushes — the workflow never does</td></tr>
+</table>
+<p class="muted">The per-reason playbook (all twenty of them) is <code>runtime-docs/operations.md</code> §3;
+<code>launch.sh status --halt</code> prints the full question set, untruncated.</p>
+
+<h2>What holds it together</h2>
+<div class="cards">
+  <div class="card"><h3>one table, one derivation</h3><p>Every stage's owed outputs are declared
+    in <code>stages.tsv</code> and derived by one code path — emit's gate, the ferry's advance
+    and park-on-miss all ask the same list. A backstop cannot share an item with the failure it
+    catches, because there is only one list.</p></div>
+  <div class="card"><h3>one atomic store</h3><p>Plain files under <code>.runtime/state/</code>,
+    checksummed, one writer class per surface. Fault ≠ absent: a corrupt read is never silently
+    zero. The state is regenerable and never hand-edited.</p></div>
+  <div class="card"><h3>capabilities, never names</h3><p>A backend CLI is a declaration file
+    (screen signatures, capabilities); the ferry switches on declared capabilities only. A
+    renamed CLI can never silently change behaviour.</p></div>
+  <div class="card"><h3>judgment to the cheapest instrument</h3><p>Mechanical claims are gated
+    at emit time; author-fixable defects close in the author's own refine loop; only
+    judgment-class claims reach the independent reviewer; only the owner decides. Each party is
+    disturbed as little as it can be.</p></div>
+</div>
+
+<h2>Start here</h2>
+<pre><code>runtime-scripts/launch.sh &lt;workspace&gt;     # workspace = the topic's delivery directory
+runtime-scripts/monitor.sh &lt;workspace&gt;     # read-only panel (--once for scripting)
+runtime-scripts/launch.sh status &lt;workspace&gt; --halt   # read a park's full question set</code></pre>
+<ul>
+  <li><b>Prerequisites</b> (a fresh machine), the workspace contract, and the verb list:
+    <code>README.md</code>.</li>
+  <li><b>Verify the install:</b> <code>self-check/check.sh</code> — every check PASS; arms
+    whose tools are absent SKIP by name.</li>
+  <li><b>Received as plain files?</b> Make it a repository first (<code>git init</code>,
+    commit the tree) — the rollback discipline and the commit hook assume one.</li>
+</ul>
+<p class="muted">For the deep picture — an evaluation of one maintenance round with measured
+costs and benefits — see <code>overview.html</code> (a dated snapshot, 2026-09-05).</p>
+
+</main>
+</body>
+</html>

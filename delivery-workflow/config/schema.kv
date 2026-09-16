@@ -1,0 +1,68 @@
+# Closed key vocabulary (design/config-and-adapters.md §1). config.sh faults on
+# any key absent here — a typo must not silently fall through to a default.
+# type: str|int|bool|enum(<values>)|list
+# <agent> ∈ author|reviewer|implementer ; <stage> = stages.tsv column 1.
+
+agent.author.backend=str
+agent.author.model=str
+agent.author.effort=enum(low,medium,high,xhigh,max)
+agent.reviewer.backend=str
+agent.reviewer.model=str
+agent.reviewer.effort=enum(low,medium,high,xhigh,max)
+agent.implementer.model=str
+agent.implementer.effort=enum(low,medium,high,xhigh,max)
+all_cold=bool
+slice.max_diff_lines=int
+slice.max_commits=int
+slice.max_files=int
+cap.function=int
+cap.source_file=int
+cap.selftest_file=int
+cap.commit_diff_lines=int
+cap.spec_lines=int
+cap.review_lines=int
+cap.artifact_lines=int
+refine.max_rounds=int
+review.max_rounds=int
+split.fixpoint_emits=int
+split.max_rounds=int
+liveness.poll=int
+liveness.heartbeat_fresh=int
+liveness.quiet_grace=int
+liveness.stage_timeout=int
+liveness.working_max_age=int
+liveness.nudge_grace=int
+liveness.retry_grace=int
+liveness.hard_ceiling=int
+liveness.modal_acts_max=int
+liveness.cpu_busy_pct=int
+liveness.stop_gate_blocks_max=int
+liveness.notify_fresh=int
+probe.timeout=int
+budget.stage_attempts=int
+budget.slice_wallclock=int
+budget.topic_wallclock=int
+budget.watchdog_relaunches=int
+notify.cmd=str
+notify.preset=enum(key-points,per-slice,per-commit,all)
+# notify.transport names an adapter under runtime-scripts/transports/ (bark
+# today); notify.cmd, when set, overrides it. The transport is the MACHINE's
+# (operator config), so a webhook URL never sits in a committed file.
+notify.transport=str
+notify.repage_interval=int
+notify.repage_max=int
+notify.ack_timeout=int
+maintenance.suite_cap=int
+maintenance.check_cap=int
+maintenance.vd_open_cap=int
+# per-event overrides live in the notify STORE surface (launch.sh notify
+# <event>=on|off), never in kv files — a file key here would be silently unread.
+stage.*.timeout=int
+stage.*.budget_attempts=int
+
+# validation rules enforced by config.sh load (beyond types):
+#   rule.reviewer_effort_floor : agent.reviewer.effort >= base effort of the run
+#   rule.unknown_key_faults    : any key not matching this schema -> fault
+#   rule.retired_slice_id      : override file addressing a superseded slice id -> fault
+#   rule.liveness_window       : quiet_grace+nudge_grace < stage_timeout <= hard_ceiling
+#                                (incl. every stage.*.timeout override)

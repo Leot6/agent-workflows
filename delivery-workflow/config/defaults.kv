@@ -1,0 +1,256 @@
+# Workflow-level defaults. READ-ONLY at run time: topics read, never write.
+# Every key must exist in schema.kv (unknown key = fault). All timeouts are
+# independent literals — nothing derives from another value.
+
+# --- agents (three-level: default -> topic.kv -> slice.<nn>.<agent>.kv) ---
+# Model values are BARE slugs — no shell quoting here; quoting sits at the
+# flag site in the backend declaration's cmd.launch, the one place the launch
+# string's shell parse happens.
+agent.author.backend=claude
+agent.author.model=opus
+agent.author.effort=max
+# Reviewer diversity: bind a DIFFERENT backend/model where one is available
+# (review-standards §12 — lineage independence is not cognitive diversity;
+# the recommended default is a non-author model). A single-backend
+# environment keeps these equal and inherits the same-model ceiling, which
+# the ferry names in the audit surface at run init — deliberate, never
+# silent. The mechanism is fully config: no code change to diversify.
+agent.reviewer.backend=claude
+agent.reviewer.model=opus
+agent.reviewer.effort=max
+agent.implementer.model=opus
+agent.implementer.effort=high
+
+# --- session lifecycle ---
+all_cold=false
+
+# --- slice budgets. Ceilings, not targets: the split rule (one functional
+# story) binds first. The diff ceiling sits AT the measured-good evidence
+# (a ~2400-line merged slice reviewed well); the commit ceiling sits BELOW the
+# single 12-unit observation (one data point does not license 12). Per-commit
+# NEEDS-MF rate jumps ~7x above ~600 lines, which is what makes
+# cap.commit_diff_lines load-bearing. High-risk slices target half of these
+# (see review-standards). Recalibrate from ledger leak-rate data as real
+# topics complete. ---
+slice.max_diff_lines=2500
+slice.max_commits=8
+slice.max_files=30
+
+# --- caps: workflow defaults; project.kv same-named cap.* keys override (either direction) ---
+cap.function=200
+cap.source_file=800
+cap.selftest_file=1000
+cap.commit_diff_lines=500
+cap.spec_lines=2000
+cap.review_lines=1500
+# Topic artifacts that grow with slice/round count (charters, closeout,
+# turnover, conformance, validation note) — sized with spec_lines, NOT the
+# source-file cap: an 800-line "source file" refusal at slice N is a miscap.
+cap.artifact_lines=2000
+
+# --- refine ---
+refine.max_rounds=3
+
+# --- review loop bound ---
+# Per (slice, stage) round cap for precheck↔revise and postcheck↔fix. The
+# severity-trend predicate parks on a REPEAT (a finding surviving the previous
+# round), so a loop whose every round finds new material never trips it and
+# needs a bound of its own, or its only stop is wallclock. Same halt class
+# (disagreement), same ruled discharge. Calibrated from the finished topics'
+# handoff surfaces: the longest review loop ever run reached round 5, so 8
+# leaves three rounds of headroom and never fires on a loop that has converged
+# before.
+review.max_rounds=8
+
+# --- split loop convergence ---
+# The topic loop's bound, and it is computed on the DECIDED ARTIFACT rather than
+# on the review's finding count. split-check's eight criteria (review-standards
+# §6) are all properties of the DECOMPOSITION, and §6 says the decomposition is
+# machine-carried: "a hard edge that exists only as prose is a substantive
+# finding (the scheduler cannot read prose)". So the slices index IS the thing
+# under review, and N identical emits mean the author was asked to re-cut and
+# produced the same cut — a fixpoint. 2 is the smallest N that tells "unchanged"
+# from "never changed": a round that finds a real boundary problem emits a
+# DIFFERENT index and never trips this.
+split.fixpoint_emits=2
+
+# --- split loop round bound ---
+# The topic loop's OTHER bound, and the one the fixpoint above cannot give. The
+# fixpoint stops a decomposition that FROZE; a decomposition that THRASHES emits
+# a different index every round, so it never fires and the only remaining stop
+# is wallclock. Which wallclock matters: split and split-check are scope=topic
+# and run at slice 00, and attempt.sh exempts 00 from budget.slice_wallclock by
+# construction (a slice cap applied to 00 would price the whole topic), so the
+# only clock left is budget.topic_wallclock — three days of working time,
+# parking on a cause it never diagnosed. That is the park check_severity_trend's
+# own note calls a misnamed cause, and this key is the same answer for the loop
+# that lacked it. Same halt class (disagreement), same ruled discharge, own text.
+# Calibrated by review.max_rounds' rule above, applied to this loop: the longest
+# split loop on record ran 13 rounds and CONVERGED, so 16 leaves three rounds of
+# headroom and never fires on a loop that has converged before — 13 or lower
+# would have parked that one. The range the 13 is a maximum OF is stated rather
+# than implied, because it is narrower than the review bound's: four topics'
+# split loops are recorded in the durable home (13 · 3 · 2 · 1), and three of the
+# six topics behind review.max_rounds' own calibration carry no split-round
+# reading at all.
+split.max_rounds=16
+
+# --- liveness (seconds; each literal independent) ---
+# stage_timeout is a CONTINUOUS-INACTIVITY deadline (any heartbeat/CPU
+# activity resets it); hard_ceiling alone caps total duration. Constraint:
+# stage_timeout must exceed quiet_grace + nudge_grace (the nudge self-heal
+# window) with margin, or timeouts preempt recoverable idles. The graces are
+# deliberately tight: awaiting_input is only classified after a stale
+# heartbeat (>=heartbeat_fresh) + flat CPU + two agreeing pane frames, so a
+# nudge fired at quiet_grace is acting on strong evidence, not impatience.
+# Revisit all four against a live topic's ledger data (event=nudge rate).
+liveness.poll=15
+liveness.heartbeat_fresh=120
+liveness.quiet_grace=420
+liveness.stage_timeout=1800
+liveness.working_max_age=7200
+liveness.nudge_grace=180
+# How long a backend's OWN retry ladder may run before the attempt fails with
+# the cause named. Not an idle grace and deliberately not sized like one: the
+# nudge ladder's 180s is for a quiet human-waiting session, while a CLI in API
+# backoff is doing exactly what it should. Sized from the measured episode
+# (ladders reaching
+# "attempt 9/10", "Retrying in 37", ~17 minutes
+# and two attempts spent before the class existed) — long enough for a full
+# ladder to clear on its own, short enough that a permanently-refusing backend
+# does not silently consume the stage budget. stage_timeout still bounds it
+# from outside; this exists so the failure says `backend_retrying` and not
+# `idle`.
+# HONEST BOUND: `stage_timeout` (and any `stage.<name>.timeout` override) is
+# the OUTER limit, so a stage whose timeout sits below this value can never
+# reach the retry grace — its backoff ends as `FAIL timeout` instead of
+# `FAIL backend_retrying`. That is safe and it is silent: nothing goes
+# unbounded, but the failure loses the cause the arm exists to name. Keep
+# this under the smallest stage timeout in force, or accept that those
+# stages report the outer bound.
+liveness.retry_grace=900
+liveness.hard_ceiling=10800
+# recurring-modal cap per attempt: past this, a repeating modal parks
+# unknown_modal (loud) instead of being auto-answered forever
+liveness.modal_acts_max=5
+# The CPU extension needs a FLOOR, or it extends forever. An idle CLI sitting
+# at its prompt still burns a few percent of a core, and the test was "any
+# increase at all" — so a wedged session read as busy_cpu on every poll, which
+# reset the inactivity clock, the nudge and the working episode together. Only
+# the 3h ceiling was left, and a measured wedge cost ~6h and a day's backend
+# quota. Expressed as percent of ONE core over the sampling window (the loop
+# scales it by the real elapsed span, so a heartbeat-fresh gap cannot inflate
+# a delta into a false positive). Note the ordering that makes a low floor
+# safe: a stage making tool calls never reaches this test at all — its
+# heartbeat is fresh — so what is measured here is work that is silent AND
+# unheartbeated, i.e. a build or test run, which sits near or above a full
+# core, far above idle noise.
+liveness.cpu_busy_pct=25
+# Repeated Stop-gate blocks are the session TELLING us it cannot finish. Past
+# this many for one attempt, the ferry stops believing the pane and fails the
+# attempt (a CLI whose own block cap overrides the gate leaves a session that
+# spins forever with no record). Calibrated between two measured points, not
+# picked: a NORMAL turn blocks once by design (the gate is what shepherds the
+# agent to its emit) and up to about three when the emit itself refuses for an
+# owed artifact and the agent iterates — while the wedged session blocked NINE
+# times before the CLI's own cap force-ended its turn. Six sits clear of the
+# recoverable band and still fires well before the silent finish.
+liveness.stop_gate_blocks_max=6
+# A CLI-side Notification event (idle_prompt) counts as fresh idleness
+# evidence for this many seconds (protocol-derived idleness, state doc §5).
+# Independent literal per the no-derived-defaults rule.
+liveness.notify_fresh=120
+
+# --- onboarding probe (seconds; bounds the scratch session's agent phase) ---
+probe.timeout=300
+
+# --- budgets ---
+budget.stage_attempts=3
+budget.slice_wallclock=28800
+budget.topic_wallclock=259200
+budget.watchdog_relaunches=3
+
+# --- notify ---
+# The transport is the MACHINE's: its config home is ${XDG_CONFIG_HOME:-~
+# /.config}/delivery-workflow/config.kv (operator-owned, outside every git
+# repo — a transport may embed a webhook URL, and defaults.kv is committed);
+# topic.kv overrides per-topic. Two ways to arm it: notify.transport=<name>
+# picks a shipped adapter under runtime-scripts/transports/ (bark today), or
+# notify.cmd=<command> runs any command as <event> <message>. Empty here is
+# correct — the workflow ships no transport, the operator arms their own.
+notify.cmd=
+notify.preset=key-points
+notify.transport=
+# The leg from the transport to a human has no receipt: a page the transport
+# accepted and nobody saw reads exactly like one the owner read. So the
+# watchdog RE-PAGES an unresolved park every interval until a resolution or the
+# cap — `launch.sh ack` PAUSES that ladder for notify.ack_timeout rather than
+# ending it (see the ack_timeout block below); the cap keeps an unattended
+# weekend from turning the channel into noise. A completion (push_gate) is
+# never re-paged. Basis: the armed parks' tail measured 2–6h against an
+# unarmed p90 of 15h.
+# repage_max=0 disables re-paging (audited, never silent); an interval below
+# 1 s falls back to the default rather than paging in a tight loop.
+notify.repage_interval=2700
+notify.repage_max=6
+# An ack PAUSES the ladder for this long; it does not end it. The predicate was
+# once "an ack row exists", which is not the proposition the ladder needs — the
+# ladder needs "a human has this park", and the two differ whenever a
+# non-human-facing actor can ack, which the pilot card instructs as its FIRST
+# move. Measured: pilot acked 71 s after the park, the owner arrived 8h09m35s
+# after it, six pages suppressed. Default = repage_interval, so ONE ack buys
+# exactly the one silence window it would otherwise have cancelled and no new
+# number needs calibrating. THEY ARE SEPARATE KNOBS: a project that shortens
+# repage_interval should set this alongside it, or an ack buys several windows.
+# PER ACK, NOT IN AGGREGATE, and that is intended: the window is measured from
+# the NEWEST ack, so a later ack starts a new one — a fresh claim of ownership,
+# which is PagerDuty's behaviour for the same reason. Held cycles never spend
+# notify.repage_max, so acks DELAY pages without cancelling them and the ladder
+# still delivers all of them; the only way to extend silence without bound is to
+# keep acking a park nobody is paging you about, which is a claim repeated.
+# 0 turns HOLDING off (an ack then suppresses nothing and every page goes out on
+# schedule), audited on the store like repage_max=0 and never silent.
+notify.ack_timeout=2700
+
+# --- maintenance WARN thresholds (dev-time visibility, never gates; the data
+# lives in this tree, not topic stores, so the WARN rides self-check/check.sh's
+# summary. Over-cap ⇒ a maintenance brief — the owner decides split/slow/accept;
+# no forced trade, no numeric gate). Both time caps are calibrated on the -j12
+# schedule and COMPARED only under `--jobs > 1`: a serial run pays roughly
+# double per check and its sum measures power management as much as work, so
+# check.sh prints a NOTE there instead of a comparison. Every re-base moved a
+# cap OUT of its measured noise band with ~20% margin, never merely up to the
+# latest reading; the series and the owner rulings behind each number are the
+# cap calibration ledger, which belongs in the owner-ruling narrative,
+# iteration-log/NOTES.md. ---
+# The tax: the SUM of per-check seconds under -j12.
+# Re-based 300 -> 360 by owner ruling, on this file's own stated method — "OUT of
+# its measured noise band with ~20% margin, never merely up to the latest
+# reading": the band measured over six runs on a quiet box was 289-301s, and
+# 301 x 1.2 = 361. The two alternatives were refused with reasons: ACCEPT makes
+# the WARN fire on essentially every future run, converting an instrument into
+# noise; making the drills opt-in buys machine seconds by weakening the runner's
+# "every selected check PASS" contract, which is the wrong direction because the
+# seconds are cheap and the guarantee is not. The ruling is in NOTES.md.
+# HELD here after a WARN that read as growth and was not: the band re-measured
+# by the method above, over runs split by each one's own END loadavg, sits
+# inside the band this cap was re-based on, and every over-cap reading came from
+# a loaded box. The comparison was load-blind, not the number — `check.sh`'s
+# `caps_comparable` suppresses both time caps on a run that did not get the
+# calibrated schedule, as it already did for serial. Brief in NOTES.md.
+maintenance.suite_cap=360
+# The floor: the slowest single check under -j12, which IS the parallel wall
+# (checks launch longest-first), so a regression is attributable to one file.
+# Also HELD: the slowest check crossed only on loaded runs, the same reading
+# defect as the sum. Its growth is COVERAGE — if it crosses this quiet, the cap
+# has done its job and the answer is to split that file, not to raise this.
+maintenance.check_cap=30
+# Open validation-debt rows. Not a defect count: every row is a landed,
+# fixture-proven mechanism waiting on live traffic, so the count rises with each
+# maintenance round and falls only when a topic runs. The threshold sits where
+# the WARN means what it says — mechanisms genuinely outrunning evidence.
+maintenance.vd_open_cap=50
+# (a fourth key lived here — a gate-removal candidacy window counted in topics.
+# Retired: it was the only key in schema.kv no code ever read, and the question
+# it was groping at — can this gate fire at all — is answered mechanically by the
+# suite's own red-proofs. See maintenance.md §1.)

@@ -1,0 +1,8 @@
+# Notification presets (design/config-and-adapters.md §5). The notify store
+# surface selects one preset + per-event overrides; hot-read at emit time.
+# Event vocabulary is CLOSED: the 20 park/broken reasons + the positives below.
+# Decision input = event type + reason class only — never content.
+preset.key-points=park.*,broken,topic.done
+preset.per-slice=park.*,broken,topic.done,slice.done,spec.ready
+preset.per-commit=park.*,broken,topic.done,slice.done,spec.ready,commit.done
+preset.all=*

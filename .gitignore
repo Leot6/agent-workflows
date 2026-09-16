@@ -1,0 +1,9 @@
+# workflows/ deployment-layer ignore. The two workflow trees carry their own
+# .gitignore files (each ignores its own discussion/); this root file governs
+# only the deployment layer's own scratch space. /discussion/ is the A/B
+# review + planning scratch of the overhaul effort — deletable as a unit,
+# never referenced by either tree (the standalone/zero-dependency rulings).
+/discussion/
+
+# Local Claude Code settings (per-machine, never shared).
+.claude/settings.local.json

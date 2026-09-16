@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{WORKFLOW_ROOT}/runtime-scripts/session/heartbeat.sh {WORKSPACE}"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{WORKFLOW_ROOT}/runtime-scripts/session/record.sh stop-gate {WORKSPACE} {SESSION_NAME}"
+          }
+        ]
+      }
+    ]
+  }
+}

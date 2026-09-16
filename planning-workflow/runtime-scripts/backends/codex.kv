@@ -1,0 +1,25 @@
+# codex — a third family. TWIN DECLARATION:
+# delivery-workflow/config/backends/codex.kv is this same CLI's other
+# declaration, under delivery's driver and its own key set. A codex CLI
+# update moves BOTH; recalibrate the two together or neither.
+# Reasoning effort is not a flag here: codex takes it
+# as a config override, `-c model_reasoning_effort=high`, measured to land in
+# the banner as "gpt-5.6-sol high". Same standing rule as --model, different
+# spelling — which is why the check greps the launch line for --model only and
+# effort stays a per-CLI shape the {effort} placeholder absorbs.
+# Measured 2026-08: composer is '›' with placeholder
+# text, a status footer below it, and a startup modal ("Yes, continue / No,
+# quit") that Enter clears — hence the larger settle. NOTE: '›' also appears on
+# hint lines, so its presence is a readiness signal and not a uniqueness one;
+# a too-early match sends the message into a pane that eats it and the marker
+# never appears, which is the timeout path.
+model=gpt-5.6-sol
+effort=high
+cmd.launch=codex --model "{model}" -c model_reasoning_effort={effort} --add-dir {scratch}
+composer=›
+# codex prints remaining budget in its own footer ("weekly N% left"), so the
+# exhausted wording is whatever that line becomes at zero — unmeasured, and
+# left undeclared rather than guessed: a pattern that never matches would imply
+# coverage this file does not have.
+settle=14
+modal_max=3

@@ -1,0 +1,14 @@
+# instrument -> backend declaration, optionally with per-lens model/effort:
+#   <instrument>=<backend> [<model> [<effort>]]
+# A bare backend takes the declaration's own model=/effort=; a value here
+# overrides it for that lens only — same CLI, different model, which is the
+# per-lens diversity A§14's reviews row prices and the declaration cannot
+# express (its keys are per-CLI defaults). Change a line to change that lens's
+# CLI, family, or model; spawn.sh never learns a backend's name.
+arch=claude
+red=claude
+meta=claude
+exec=claude
+delta=claude
+closure=claude
+verifier=claude

@@ -1,0 +1,49 @@
+# stage	scope	session	owed	verdicts	next	manifest_required	manifest_optional
+# ------------------------------------------------------------------------------
+# The single declared contract per stage type (design/architecture.md §1 move 1).
+# Read by lib/owed.sh (owed), ferry.sh select (verdicts→next), ferry.sh compose
+# (manifests). Columns are ';'-separated lists. Dynamic owed additions (impl/fix:
+# spec commit-units resolved via the progress ledger) are marked @cu.
+# session: cold|warm-author|warm-reviewer — the static freshness column
+#   (design/architecture.md §7); self-check asserts precheck/postcheck round 1
+#   cold. Rounds ≥2 of a review stage always use the .warm.md TEMPLATE (round
+#   semantics, written to work identically in any session); only the SPAWN may
+#   degrade to cold-fallback when no live held session exists.
+# manifest entries are placeholder=path-pattern; ROLE_CARD expands per role.
+# THE MANIFEST IS DERIVED FROM THE STAGE'S OWN CHECKLIST, and that is a rule
+# rather than an observation: an artifact a stage's checklist names is an
+# artifact its manifest owes. Measured — precheck's P7 checks the
+# spec's citations against the PLAN and P8 audits "each decisions-surface entry
+# of this slice", postcheck's C0 sweeps the same DP set against the precheck
+# review, and none of the four was in either manifest. Every reviewer went and
+# found them: 21 of 21 precheck rounds across two topics named a DP id and
+# cited the plan, at 2.0 plan commands per session. So the cost was paid every
+# round by the diligent, and the exposure was a less diligent one skipping a
+# duty it was never handed the input for. When a checklist gains an item that
+# names an artifact, this row owes the entry in the same commit.
+# The rule's WORKFLOW-DOC half is now mechanical, not remembered: 30-closure
+# asserts that any runtime-doc a stage's own prompt cites in backticks appears
+# in that stage's manifest. Applied, it moved 8 stages' STANDARDS,
+# 5 stages' PROTOCOL and close-out's OPERATIONS, all previously carried only as
+# a prose citation next to a section number. The evidence that decided it is
+# the FINGERPRINT, not a reading habit: compose_fingerprint hashes the content
+# of every manifest-RESOLVED input, so `review-standards.md` was novelty for a
+# precheck retry and invisible to a spec retry -- confirmed in the archived
+# input sidecars, where precheck's lists review-standards.md and spec's does
+# not, though both prompts bind their stage to it by section. An owner edit to
+# the spec-ready contract could therefore land a `no_novelty` park on the very
+# stage that contract governs. Zero new resolver code: _compose_resolve's first
+# arm already accepted cards/*, review-standards.md, protocol.md and
+# operations.md; nothing had ever asked it for the last two.
+# ------------------------------------------------------------------------------
+plan-validate	topic	cold	validation_note;handoff	ready|not_ready	ready:split,not_ready:HALT_class_u	ROLE_CARD=cards/author.md;PLAN=plan.md;PROJECT=project.kv;STANDARDS=review-standards.md;PROTOCOL=protocol.md	RULING=rulings.pending
+split	topic	warm-author	charters.md;slices_index;handoff	done	done:split-check	ROLE_CARD=cards/author.md;PLAN=plan.md;VALIDATION=slices/00/validation_note.md;STANDARDS=review-standards.md	REVIEW=splitcheck_latest;RULING=rulings.pending
+split-check	topic	cold	splitcheck_review;handoff	concur|flag	concur:slice_loop,flag:split	ROLE_CARD=cards/reviewer.md;PLAN=plan.md;CHARTERS=charters.md;INDEX_AS_FIRST_DECLARED=slices_index;STANDARDS=review-standards.md;PROTOCOL=protocol.md	PRIOR_REVIEW=splitcheck_review.prev;PROPOSAL=reslice.pending;RULING=rulings.pending
+spec	slice	cold	spec.md;handoff	drafted	drafted:precheck	ROLE_CARD=cards/author.md;PLAN=plan.md;CHARTER=charters.md;PROJECT=project.kv;STANDARDS=review-standards.md;COMMITMSG=commit-messages.md	PLAN_SLICE=plan_slice;TURNOVER_PREV=slices/@prev/turnover.md;RULING=rulings.pending;CONFIG=config.snapshot
+precheck	slice	cold	precheck_review;handoff	ready|issues	ready:impl,issues:revise	ROLE_CARD=cards/reviewer.md;SPEC=slices/@nn/spec.md;STANDARDS=review-standards.md;COMMITMSG=commit-messages.md;PROJECT=project.kv;PLAN=plan.md	PLAN_SLICE=plan_slice;DECISIONS=decisions@nn;PRIOR_REVIEW=precheck_review.prev;CONFIG=config.snapshot;RULING=rulings.pending
+revise	slice	warm-author	spec.md;handoff	drafted	drafted:precheck	ROLE_CARD=cards/author.md;SPEC=slices/@nn/spec.md;REVIEW=slices/@nn/precheck_latest;STANDARDS=review-standards.md	RULING=rulings.pending
+impl	slice	warm-author	@cu;dispatch;conformance.md;handoff	built|blocked	built:postcheck,blocked:HALT_blocked	ROLE_CARD=cards/author.md;SPEC=slices/@nn/spec.md;PROJECT=project.kv;STANDARDS=review-standards.md;COMMITMSG=commit-messages.md;PROTOCOL=protocol.md	RULES=coding_rules;RULING=rulings.pending
+postcheck	slice	cold	postcheck_review;handoff	conforms|findings	conforms:turnover,findings:fix	ROLE_CARD=cards/reviewer.md;SPEC=slices/@nn/spec.md;CONFORMANCE=slices/@nn/conformance.md;PROGRESS=progress;STANDARDS=review-standards.md;COMMITMSG=commit-messages.md;PROTOCOL=protocol.md;PROJECT=project.kv	GATES=gates@nn;DECISIONS=decisions@nn;PRECHECK=precheck_latest;PRIOR_REVIEW=postcheck_review.prev;RULING=rulings.pending
+fix	slice	warm-author	@cu;conformance.md;handoff	built|blocked	built:postcheck,blocked:HALT_blocked	ROLE_CARD=cards/author.md;SPEC=slices/@nn/spec.md;REVIEW=slices/@nn/postcheck_latest;STANDARDS=review-standards.md;COMMITMSG=commit-messages.md	RULES=coding_rules;RULING=rulings.pending
+turnover	slice	warm-author	turnover.md;handoff	done|reslice	done:next_slice,reslice:split-check	ROLE_CARD=cards/author.md;SPEC=slices/@nn/spec.md;LEDGER=ledger@nn;PLAN=plan.md;PROJECT=project.kv;STANDARDS=review-standards.md;PROTOCOL=protocol.md	PROGRESS=progress;RULING=rulings.pending
+close-out	topic	cold	closeout.md;handoff	done	done:COMPLETE	ROLE_CARD=cards/author.md;LEDGER=ledger;CHARTERS=charters.md;INDEX_AS_FIRST_DECLARED=slices_index;STANDARDS=review-standards.md;OPERATIONS=operations.md	PROGRESS=progress;RULING=rulings.pending;DECISIONS=decisions;OBSERVATIONS=observations;LEARNINGS=learnings
