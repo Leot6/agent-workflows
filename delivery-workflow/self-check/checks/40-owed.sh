@@ -35,7 +35,7 @@ d=$(owed_derive "$ws" spec 01 | paste -sd, -)
 [ "$d" = "spec.md,handoff" ] && ok "spec owed set = $d" || bad "spec owed set wrong: $d"
 rm -f "$ws/slices/01/spec.md"
 d=$(owed_derive "$ws" impl 01 | paste -sd, -)
-printf '%s' "$d" | command grep -q '@cu-list' \
+command grep -q '@cu-list' <<< "$d" \
   && ok "empty commit-unit list is itself a distinguished miss (@cu-list)" \
   || bad "missing spec did not surface @cu-list: $d"
 mk_spec "$ws" 01 2
@@ -126,13 +126,13 @@ out=$("$RS/session/record.sh" emit "$ws" --stage impl --nonce nonce1 --verdict b
 
 echo "-- an unresolvable branch tip names ITSELF, not a phantom missing SHA --"
 wsb=$(mk_ws "$base" owedbadtip "$repo" "$branch")
-sed -i 's/^branch=.*/branch=no-such-branch/' "$wsb/project.kv"
+plat_sed_i 's/^branch=.*/branch=no-such-branch/' "$wsb/project.kv"
 mkdir -p "$wsb/slices/01"
 printf '| cu-1 | feat: x | - | no |\n' > "$wsb/slices/01/spec.md"
 ( . "$RS/lib/state.sh"
   state_append "$wsb" progress session "v=1 t=1 slice=01 stage=impl round=1 cu=1 sha=$(git -C "$repo" rev-parse HEAD)" ) > /dev/null
 out=$(_owed_item_check "$wsb" impl 01 1 "" "" cu.1 2>&1); rc=$?
-printf '%s' "$out" | command grep -qi "branch\|tip" \
+command grep -qi "branch\|tip" <<< "$out" \
   && ok "the error names the unresolvable tip (project.kv branch=no-such-branch)" \
   || bad "misleading error blames the SHA: '$out' — during a real topic this reads as lost work, not a config typo"
 

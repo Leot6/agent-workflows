@@ -41,7 +41,15 @@
 # Usage: emit_gate.sh <plan-version-dir> <checkout-root>
 # Exit: 0 clean · 1 findings (each self-describing) · 2 usage fault.
 set -uo pipefail
-export LC_ALL=C.UTF-8   # the gate scans UTF-8 documents; a C locale splits multibyte keys (live-caught by 98-emit-gate)
+# The gate scans UTF-8 documents; a C locale splits multibyte keys (live-caught
+# by 98-emit-gate). The name of a UTF-8 locale differs by host — C.UTF-8 on
+# Linux, en_US.UTF-8 on macOS — so the first one whose charmap really is UTF-8
+# wins, and none at all is a refusal rather than a silent byte-mode scan.
+for _loc in C.UTF-8 C.utf8 en_US.UTF-8; do
+  [ "$(LC_ALL=$_loc locale charmap 2>/dev/null)" = UTF-8 ] && { export LC_ALL=$_loc; break; }
+done
+[ "$(locale charmap 2>/dev/null)" = UTF-8 ] \
+  || { echo "refuse: no UTF-8 locale available (tried C.UTF-8, en_US.UTF-8)" >&2; exit 2; }
 DIR=${1:?usage: emit_gate.sh <plan-version-dir> <checkout-root>}
 ROOT=${2:?usage: emit_gate.sh <plan-version-dir> <checkout-root>}
 [ -d "$DIR" ] || { echo "refuse: not a directory: $DIR" >&2; exit 2; }
@@ -71,35 +79,36 @@ done < <(for f in $(find "$DIR" -name '*.md' -type f); do
 # obs-84's fingerprint: a construct claimed with two different counts in one
 # file. The construct token is the nearest non-numeric word adjacent to the
 # count phrase — on EITHER side (Chinese prose puts it before or after).
+# Perl, not awk: the windows are CHARACTERS, and awk implementations disagree
+# on that (gawk counts characters, mawk bytes, BSD awk refuses to split a
+# multibyte sequence) — the same line keyed three ways on three hosts.
 div=$(for f in $(find "$DIR" -name '*.md' -type f); do
-  strip_fences "$f" | awk -v file="$f" '
-    {
-      line=$0
-      while (match(line, /[0-9]+[[:space:]]*(处|条|个|项|行|hits?|rows?|lines?)/)) {
-        m_start=RSTART; m_len=RLENGTH              # SAVE: match() below clobbers them
-        if (m_len <= 0) break
-        num=substr(line, m_start, m_len); gsub(/[^0-9]/,"",num)
-        # key window: 12 chars before and after the count phrase, minus the
-        # count itself and whitespace — whatever names the construct either side
-        # the construct may FOLLOW ("N 处构造K") or PRECEDE ("构造K共 N 处"):
-        # after-window first; empty ⇒ the trailing run of the before-window,
-        # the link-words that merely connect prose to the count.
-        win = substr(line, m_start+m_len, 12)
-        gsub(/[0-9[:space:]]/, "", win); gsub(/(处|条|个|项|行)/, "", win)
-        if (win == "") {
-          win = substr(line, (m_start>12? m_start-12 : 1), 12)
-          gsub(/[0-9[:space:]]/, "", win)
-          gsub(/(处|条|个|项|行|共|亦|有|恰|计)/, "", win)
+  strip_fences "$f" | perl -CSD -Mutf8 -e '
+    my $file = shift; my %seen;
+    while (my $line = <STDIN>) {
+      chomp $line;
+      while ($line =~ /([0-9]+)\s*(?:处|条|个|项|行|hits?|rows?|lines?)/) {
+        my ($ms, $me, $num) = ($-[0], $+[0], $1);
+        # key window: 12 chars after the count phrase, minus digits and
+        # whitespace; empty => the 12 chars before it, minus the link-words
+        # that merely connect prose to the count. The construct may FOLLOW
+        # ("N 处构造K") or PRECEDE ("构造K共 N 处") its count.
+        my $win = substr($line, $me, 12);
+        $win =~ s/[0-9\s]//g; $win =~ s/处|条|个|项|行//g;
+        if ($win eq "") {
+          $win = substr($line, $ms >= 12 ? $ms - 12 : 0, 12);
+          $win =~ s/[0-9\s]//g; $win =~ s/处|条|个|项|行|共|亦|有|恰|计//g;
         }
-        key=substr(win, 1, 16)
-        if (key != "") {
-          if (seen[key] != "" && seen[key] != num)
-            printf "emit-gate[same-section] %s — construct [%s] claimed as both %s and %s (obs84 fingerprint)\n", file, key, seen[key], num
-          seen[key]=num
+        my $key = substr($win, 0, 16);
+        if ($key ne "") {
+          printf "emit-gate[same-section] %s — construct [%s] claimed as both %s and %s (obs84 fingerprint)\n",
+            $file, $key, $seen{$key}, $num
+            if defined $seen{$key} && $seen{$key} ne $num;
+          $seen{$key} = $num;
         }
-        line=substr(line, m_start+m_len)           # advance by the SAVED extent
+        $line = substr($line, $me);   # advance past this count
       }
-    }'
+    }' "$f"
 done)
 n_div=$(printf '%s' "$div" | grep -c 'emit-gate' || true)
 [ "${n_div:-0}" -gt 0 ] && { printf '%s\n' "$div"; fails=$((fails + n_div)); }
@@ -114,7 +123,7 @@ while IFS= read -r pin; do
     fails=$((fails + 1))
     continue
   fi
-  lines=$(wc -l < "$f")
+  lines=$(( $(wc -l < "$f") ))
   if [ "$nn" -gt "$lines" ]; then
     echo "emit-gate[cite] $pin pins line $nn but $f has $lines lines"
     fails=$((fails + 1))
@@ -123,6 +132,6 @@ done < <(for f in $(find "$DIR" -name '*.md' -type f); do
            strip_fences "$f" | grep -oE '[A-Za-z0-9_./-]+\.(cc|h|cpp|hpp|py|sh|md|json|tsv):[0-9]+' || true
          done | sort -u)
 
-echo "emit-gate: $fails finding(s) over $(find "$DIR" -name '*.md' -type f | wc -l) files"
+echo "emit-gate: $fails finding(s) over $(( $(find "$DIR" -name '*.md' -type f | wc -l) )) files"
 [ "$fails" -eq 0 ] || exit 1
 exit 0

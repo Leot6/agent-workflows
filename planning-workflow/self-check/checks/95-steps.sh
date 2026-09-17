@@ -110,7 +110,7 @@ want="steps $(render_spec "$(parse_spec "$mnt_spec")")"
 # legitimate restatement reds this and the number is bumped — which is the
 # point: it cannot be added without someone reading it.
 RESTATEMENTS=5
-n=$(harvest_docs | xargs grep -oF "$want" 2>/dev/null | wc -l)
+n=$(( $(harvest_docs | xargs grep -oF "$want" 2>/dev/null | wc -l) ))
 [ "$n" -eq "$RESTATEMENTS" ] \
   && ok "the maintainer half renders as \"$want\" in all $n places that restate it" \
   || bad "§4.11's maintainer set renders as \"$want\", found $n times, expected $RESTATEMENTS — a restatement lost part of the set, or a new one was added unread"

@@ -67,7 +67,7 @@ a_inst=$(grep -m1 'amend topic at <ABS topic root>' "$TPL/00_context.md" | sed '
 # item scaffold carries the A§4 field vocabulary (spot: the four unconditional
 # fields whose 'none' forms 90-plan-absence guards)
 for f in 'abort/rollback' 'interface delta' 'migration/compat' 'acceptance'; do
-  grep -q -- "**$f**" "$TPL/items/_W-template.md" \
+  grep -qF -- "**$f**" "$TPL/items/_W-template.md" \
     && ok "item scaffold carries the '$f' field" \
     || bad "item scaffold lacks the '$f' field — 90-plan-absence's sweep went vacuous"
 done

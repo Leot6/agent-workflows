@@ -105,8 +105,8 @@ s2lock=$(git -C "$s2repo" rev-parse --absolute-git-dir)/delivery.lock
   && ok "the parked topic still holds .delivery.lock naming its workspace (released only at COMPLETE/reclaim)" \
   || bad "repo lock absent or anonymous after a park: $(cat "$s2lock" 2>/dev/null | tr '\n' ' ')"
 mon=$("$RS/monitor.sh" "$ws" --once 2>/dev/null || true)   # capture, then grep: grep -q + pipefail would SIGPIPE the monitor
-{ printf '%s\n' "$mon" | command grep -q "PARKED — needs you" \
-  && printf '%s\n' "$mon" | command grep -q "reason .*owed_miss"; } \
+{ command grep -q "PARKED — needs you" <<< "$mon" \
+  && command grep -q "reason .*owed_miss" <<< "$mon"; } \
   && ok "monitor --once renders the park as the headline, naming this park's reason (read-only store view)" \
   || bad "monitor does not show the park: $(printf '%s\n' "$mon" | command grep -m1 'PARKED\|reason')"
 scen_end

@@ -1,0 +1,17 @@
+#!/usr/bin/perl
+# md5sum — macOS stand-in for the GNU command (lib/platform.sh puts this
+# directory first on PATH on macOS). Output shape is GNU's:
+# "<hash>  <name>", "-" for stdin. No option is supported; this tree uses none.
+use strict; use warnings; use Digest::MD5;
+if (@ARGV && $ARGV[0] =~ /^-./) { print STDERR "md5sum (darwin-bin): option '$ARGV[0]' not supported\n"; exit 2 }
+@ARGV = ('-') unless @ARGV;
+my $rc = 0;
+for my $f (@ARGV) {
+  my $fh;
+  if ($f eq '-') { $fh = \*STDIN } elsif (-f $f && open($fh, '<', $f)) { } else {
+    print STDERR "md5sum: $f: No such file or directory\n"; $rc = 1; next;
+  }
+  binmode $fh;
+  print Digest::MD5->new->addfile($fh)->hexdigest, "  $f\n";
+}
+exit $rc;

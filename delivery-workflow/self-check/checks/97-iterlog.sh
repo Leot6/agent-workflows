@@ -43,7 +43,7 @@ iterlog_consistency() { # <root> -> prints defect lines; rc 0 clean / 1 defects
       *) echo "entries/$id.md: status '$st' is not open|adopted|closed"; d=1 ;;
     esac
     for k in hook anchors landing; do
-      printf '%s\n' "$blk" | command grep -qE "^$k:[[:space:]]*[^[:space:]]" \
+      command grep -qE "^$k:[[:space:]]*[^[:space:]]" <<< "$blk" \
         || { echo "entries/$id.md: head block lacks '$k:' (an empty field is an unfilled one)"; d=1; }
     done
     # An entry still in play owes the field; a closed one migrated from a bare
@@ -222,7 +222,7 @@ precond "the known-bad probe list still carries N>=8 spellings (saw ${#BRE_PROBE
 for probe in "${BRE_PROBES[@]}"; do
   _bre_entry "$probe"
   out=$(iterlog_body_restates_head "$d"); rc=$?
-  [ $rc -eq 1 ] && printf '%s' "$out" | command grep -q 'restates a head-block key' \
+  [ $rc -eq 1 ] && command grep -q 'restates a head-block key' <<< "$out" \
     && ok "known-bad: a body \`$probe\` is caught by name" \
     || bad "known-bad \`$probe\` NOT caught (rc=$rc, out: $out)"
 done
@@ -238,7 +238,7 @@ done
 # path — the greedy-substitution defect this arm shipped once.
 _bre_entry '- status: see /entries/other.md for the reading'
 out=$(iterlog_body_restates_head "$d")
-printf '%s' "$out" | command grep -q '^entries/probe\.md:[0-9]* body restates a head-block key:' \
+command grep -q '^entries/probe\.md:[0-9]* body restates a head-block key:' <<< "$out" \
   && ok "the offending file and line survive a hit whose own text contains the corpus path" \
   || bad "the report lost its file/line to a greedy substitution; got: $out"
 # The sweep is scoped to markdown. entries/ holds only `.md` today, so dropping
@@ -262,7 +262,7 @@ iterlog_body_restates_head "$d" >/dev/null 2>&1 \
 # readable corpus can make grep exit 2 and an unreachable branch asserts nothing.
 _iterlog_grep() { return 2; }
 out=$(iterlog_body_restates_head "$d"); rc=$?
-[ $rc -eq 1 ] && printf '%s' "$out" | command grep -q 'did not complete' \
+[ $rc -eq 1 ] && command grep -q 'did not complete' <<< "$out" \
   && ok "known-bad: a sweep that exits rc>=2 is refused as incomplete, never read as clean" \
   || bad "a dead matcher read as a clean tree (rc=$rc, out: $out)"
 _iterlog_grep() { command grep "$@"; }
@@ -290,13 +290,13 @@ iterlog_corpus_floor "$c" 100 >/dev/null 2>&1 \
   || bad "the floor refuses a healthy corpus: $(iterlog_corpus_floor "$c" 100)"
 rm -f "$c/entries/e100.md"
 out=$(iterlog_corpus_floor "$c" 100); rc=$?
-[ $rc -eq 1 ] && printf '%s' "$out" | command grep -q 'fraction of the home' \
+[ $rc -eq 1 ] && command grep -q 'fraction of the home' <<< "$out" \
   && ok "known-bad: a corpus one entry under the floor is refused BY SIZE (99 < 100)" \
   || bad "known-bad: a shrunken corpus passed the floor (rc=$rc, out: $out)"
 printf '# e\n\n```entry\nstatus: open\nhook: h\nanchors: 1 — t\nlanding: -\n```\n\n- falsifiable expectation: x\n' > "$c/entries/e100.md"
 command grep -v '^| e50 |' "$c/INDEX.md" > "$c/INDEX.tmp" && mv "$c/INDEX.tmp" "$c/INDEX.md"
 out=$(iterlog_corpus_floor "$c" 100); rc=$?
-[ $rc -eq 1 ] && printf '%s' "$out" | command grep -q 'different sets' \
+[ $rc -eq 1 ] && command grep -q 'different sets' <<< "$out" \
   && ok "known-bad: files and INDEX rows disagreeing is refused BY SET (100 files, 99 rows)" \
   || bad "known-bad: a file/row mismatch passed the floor (rc=$rc, out: $out)"
 
@@ -381,7 +381,7 @@ d=$(sc_tmpdir); mkdir -p "$d/entries"
 printf '# e\n- falsifiable expectation: x\n' > "$d/entries/nohead.md"
 "$GEN" "$d" > /dev/null
 out=$(iterlog_consistency "$d"); rc=$?
-[ $rc -ne 0 ] && printf '%s' "$out" | command grep -q 'nohead.md has no ```entry head block' \
+[ $rc -ne 0 ] && command grep -q 'nohead.md has no ```entry head block' <<< "$out" \
   && ok "known-bad: an entry without a head block is caught by name" \
   || bad "known-bad 1 NOT caught (rc=$rc, out: $out)"
 
@@ -390,7 +390,7 @@ d=$(sc_tmpdir); mkdir -p "$d/entries"
 mk_entry "$d" badst pending
 "$GEN" "$d" > /dev/null
 out=$(iterlog_consistency "$d"); rc=$?
-[ $rc -ne 0 ] && printf '%s' "$out" | command grep -q "status 'pending' is not open|adopted|closed" \
+[ $rc -ne 0 ] && command grep -q "status 'pending' is not open|adopted|closed" <<< "$out" \
   && ok "known-bad: a status outside open|adopted|closed is caught" \
   || bad "known-bad 2 NOT caught (rc=$rc, out: $out)"
 
@@ -401,9 +401,9 @@ mk_entry "$d" a open
 "$GEN" "$d" > /dev/null
 precond "the generated INDEX carries the entry's row (else the stale test is vacuous)" \
   bash -c 'command grep -q "^| a | open |" "$1/INDEX.md"' _ "$d"
-sed -i 's/^status: open$/status: adopted/' "$d/entries/a.md"
+plat_sed_i 's/^status: open$/status: adopted/' "$d/entries/a.md"
 out=$(iterlog_consistency "$d"); rc=$?
-[ $rc -ne 0 ] && printf '%s' "$out" | command grep -q 'INDEX.md is stale against entries/' \
+[ $rc -ne 0 ] && command grep -q 'INDEX.md is stale against entries/' <<< "$out" \
   && ok "known-bad: an entry edit without a regenerate reads as a STALE INDEX" \
   || bad "known-bad 3 NOT caught (rc=$rc, out: $out)"
 "$GEN" "$d" > /dev/null
@@ -421,7 +421,7 @@ d=$(sc_tmpdir); mkdir -p "$d/entries"
 mk_entry "$d" noexp open "no fields here"
 "$GEN" "$d" > /dev/null
 out=$(iterlog_consistency "$d"); rc=$?
-[ $rc -ne 0 ] && printf '%s' "$out" | command grep -q 'noexp.md lacks a falsifiable-expectation field' \
+[ $rc -ne 0 ] && command grep -q 'noexp.md lacks a falsifiable-expectation field' <<< "$out" \
   && ok "known-bad: an open entry without the expectation field is caught (the landfill guard)" \
   || bad "known-bad 4 NOT caught (rc=$rc, out: $out)"
 rm "$d/entries/noexp.md"; mk_entry "$d" cl closed "migrated from a bare row"
@@ -434,7 +434,7 @@ rm "$d/entries/noexp.md"; mk_entry "$d" cl closed "migrated from a bare row"
 d=$(sc_tmpdir); mkdir -p "$d/entries"
 "$GEN" "$d" > /dev/null
 out=$(iterlog_consistency "$d"); rc=$?
-[ $rc -ne 0 ] && printf '%s' "$out" | command grep -q 'holds no files' \
+[ $rc -ne 0 ] && command grep -q 'holds no files' <<< "$out" \
   && ok "known-bad: an empty entries/ is refused (the home wrote nothing)" \
   || bad "known-bad 5 NOT caught (rc=$rc, out: $out)"
 
@@ -562,20 +562,20 @@ iterlog_harvest_completion() { # <root> -> prints defect lines; rc 0 clean / 1 d
   comps=$(command grep -E '^> harvest-completion: harvest=[0-9]+ ' "$notes" \
           | sed -E 's/^> harvest-completion: harvest=([0-9]+) .*/\1/' | sort -n -u)
   for n in $hdrs; do
-    printf '%s\n' "$comps" | command grep -qx "$n" || {
+    command grep -qx "$n" <<< "$comps" || {
       echo "harvest $n opens a block but writes no 'harvest-completion:' line — the record count the INDEX header makes mandatory was never declared"; d=1; }
   done
   for n in $comps; do
-    printf '%s\n' "$hdrs" | command grep -qx "$n" || {
+    command grep -qx "$n" <<< "$hdrs" || {
       echo "a harvest-completion line claims harvest $n, which opens no block"; d=1; }
   done
   local nstamp s hv
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     hv=$(printf '%s' "$line" | sed -E 's/.*harvest=([0-9]+).*/\1/')
-    printf '%s' "$line" | command grep -qE ' records=[1-9][0-9]* ' \
+    command grep -qE ' records=[1-9][0-9]* ' <<< "$line" \
       || { echo "harvest-completion lacks a positive records= : $line"; d=1; }
-    printf '%s' "$line" | command grep -qE ' rows=[1-9][0-9]* ' \
+    command grep -qE ' rows=[1-9][0-9]* ' <<< "$line" \
       || { echo "harvest-completion lacks a positive rows= : $line"; d=1; }
     # The STAMPS are the printed instance set. A count can be written without
     # reading the surface; a stamp list cannot, and every entry of it is
@@ -727,7 +727,7 @@ cc_clean=$("$CC" "$cc_repo" "$cc_root" 2>&1) \
 # operations.md §8's deletion rule is about, and it must be named on the CLEAN
 # path — a warning that only prints beside a failure is a warning nobody reads
 # at the moment it matters, which is before the ref is deleted.
-printf '%s\n' "$cc_clean" | command grep -q 'sole home' \
+command grep -q 'sole home' <<< "$cc_clean" \
   && ok "the clean verdict still names the citations hanging on a SINGLE ref (§8's pre-deletion cue)" \
   || bad "cite-check reported clean without naming sole-ref citations — §8's deletion rule has no input"
 
@@ -737,10 +737,10 @@ cc_out=$("$CC" "$cc_repo" "$cc_root" 2>&1); cc_rc=$?
 [ $cc_rc -eq 1 ] \
   && ok "known-bad: a citation to a commit on no ref FAILS (rc 1)" \
   || bad "known-bad: an orphaned citation read as clean (rc $cc_rc)"
-printf '%s\n' "$cc_out" | command grep -q "${dead_sha:0:8}" \
+command grep -q "${dead_sha:0:8}" <<< "$cc_out" \
   && ok "the orphaned sha is named, not just counted" \
   || bad "cite-check counted an orphan without naming it — the fix would have no address"
-printf '%s\n' "$cc_out" | command grep -q 'validation-debt.md' \
+command grep -q 'validation-debt.md' <<< "$cc_out" \
   && ok "the CITING FILE is named too (validation-debt.md is in the corpus by measurement — the audit that missed it scoped to entries/ + NOTES.md)" \
   || bad "cite-check named an orphan but not the file citing it"
 
@@ -764,7 +764,7 @@ cc_fresh=$(sc_tmpdir)/fresh
 mkdir -p "$cc_fresh/iteration-log/entries"
 printf 'prose with no commit citation\n' > "$cc_fresh/iteration-log/entries/e.md"
 cc_fout=$("$CC" "$cc_repo" "$cc_fresh" 2>&1) \
-  && printf '%s\n' "$cc_fout" | command grep -q 'cites no commit' \
+  && command grep -q 'cites no commit' <<< "$cc_fout" \
   && ok "a corpus with no commit citation reads clean BY NAME (a fresh log is not a wrong repository)" \
   || bad "a citation-free corpus was refused or passed silently: $cc_fout"
 

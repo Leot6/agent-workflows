@@ -78,19 +78,19 @@ precond "N>0 backend declarations checked (saw $nb)" test "$nb" -ge 2
 baddecl=$(sc_tmpdir)/broken.kv
 printf 'family=pty_tmux\ncmd.launch=x\n' > "$baddecl"
 viol=$(validate_decl "$baddecl")
-printf '%s\n' "$viol" | command grep -q "nudge_text" \
+command grep -q "nudge_text" <<< "$viol" \
   && ok "validator flags an incomplete declaration (known-bad fires)" \
   || bad "backend validator vacuous — missing nudge_text not flagged"
 badq=$(sc_tmpdir)/unquoted-model.kv
 printf 'cmd.launch=x --model {model}\n' > "$badq"
 viol=$(validate_decl "$badq")
-printf '%s\n' "$viol" | command grep -q "unquoted {model}" \
+command grep -q "unquoted {model}" <<< "$viol" \
   && ok "validator flags an unquoted {model} in cmd.launch (known-bad fires)" \
   || bad "quoting invariant vacuous — unquoted {model} not flagged"
 badlat=$(sc_tmpdir)/latency.kv
 printf 'probe.latency=fast\n' > "$badlat"
 viol=$(validate_decl "$badlat")
-printf '%s\n' "$viol" | command grep -q "probe.latency='fast'" \
+command grep -q "probe.latency='fast'" <<< "$viol" \
   && ok "validator flags a non-numeric probe.latency (the probe would silently run on its 30s default)" \
   || bad "a non-numeric probe.latency was not flagged — the default is in force and nobody knows"
 printf 'probe.latency=5\n' > "$badlat"
@@ -182,7 +182,7 @@ cp "$PROFD/settings-hooks.json" "$fakep/a.json"
 sed 's|session/heartbeat.sh|session/heartbeat-DIVERGED.sh|' "$PROFD/settings-hooks.json" > "$fakep/b.json"
 precond "the known-bad fixture really differs from its twin" \
   bash -c '! diff -q "$1/a.json" "$1/b.json" > /dev/null' _ "$fakep"
-printf '%s\n' "$(hooks_diverge "$fakep")" | command grep -q 'PreToolUse DIVERGES' \
+command grep -q 'PreToolUse DIVERGES' <<< "$(hooks_diverge "$fakep")" \
   && ok "a profile with a diverged hook command is FLAGGED (known-bad fires, naming the event and both sides)" \
   || bad "hook-agreement rule vacuous — a diverged PreToolUse command passed"
 
@@ -194,7 +194,7 @@ decl_tokens() { # file -> {tokens} in cmd.launch
 for f in "$WF_ROOT"/config/backends/*.kv; do
   viol=""
   for t in $(decl_tokens "$f"); do
-    printf '%s\n' $ADAPTER_TOKENS | command grep -qxF "$t" || viol="$viol {$t}"
+    command grep -qxF "$t" <<< "$(printf '%s\n' $ADAPTER_TOKENS)" || viol="$viol {$t}"
   done
   [ -z "$viol" ] \
     && ok "$(basename "$f") cmd.launch placeholders all substitutable" \
@@ -204,7 +204,7 @@ badpl=$(sc_tmpdir)/badpl.kv
 printf 'cmd.launch=x --file {prompt_file_arg}\n' > "$badpl"
 viol=""
 for t in $(decl_tokens "$badpl"); do
-  printf '%s\n' $ADAPTER_TOKENS | command grep -qxF "$t" || viol="$viol {$t}"
+  command grep -qxF "$t" <<< "$(printf '%s\n' $ADAPTER_TOKENS)" || viol="$viol {$t}"
 done
 [ -n "$viol" ] && ok "an unsubstitutable placeholder is flagged (known-bad fires)" \
   || bad "placeholder-set validator vacuous"
@@ -223,12 +223,12 @@ precond "§3 carries a fenced declaration block" test -n "$dblk"
 miss=""
 while IFS= read -r line; do
   [ -n "$line" ] || continue
-  printf '%s\n' "$decls" | command grep -qxF "$line" || miss="$miss"$'\n'"    doc has, claude.kv does not: $line"
+  command grep -qxF "$line" <<< "$decls" || miss="$miss"$'\n'"    doc has, claude.kv does not: $line"
 done <<< "$dblk"
 while IFS= read -r line; do
   [ -n "$line" ] || continue
   k=${line%%=*}
-  printf '%s\n' "$dblk" | command grep -q "^$k=" || miss="$miss"$'\n'"    claude.kv has, doc does not show: $k="
+  command grep -q "^$k=" <<< "$dblk" || miss="$miss"$'\n'"    claude.kv has, doc does not show: $k="
 done <<< "$decls"
 [ -z "$miss" ] \
   && ok "every line of §3's example is in claude.kv and every key of claude.kv is in §3 ($(printf '%s\n' "$decls" | command grep -c .) keys)" \

@@ -217,7 +217,7 @@ test=true
 acceptance=true
 EOF
 assert_rc 0 "a complete project.kv validates" -- project_validate "$pv"
-sed -i '/^branch=/d' "$pv/project.kv"
+plat_sed_i '/^branch=/d' "$pv/project.kv"
 assert_rc 2 "missing branch= refuses, naming the key (load-bearing: owed SHA ancestry)" -- \
   project_validate "$pv"
 assert_out_has "branch" "the missing key is named"
@@ -233,11 +233,11 @@ assert_out_has "acceptance" "the undeclared gates are NAMED at start, never sile
 # workflow creates it, so an unresolvable name is a mid-topic death at the
 # first ancestry read. Cold-reader review found the asymmetry (doc.branch
 # refused, branch didn't); this arm pins the closed half of it.
-sed -i 's|^branch=.*|branch=no-such-branch|' "$pv/project.kv"
+plat_sed_i 's|^branch=.*|branch=no-such-branch|' "$pv/project.kv"
 assert_rc 2 "an unresolvable branch refuses (the workflow never creates it; owed SHA ancestry reads it from the first slice on)" -- \
   project_validate "$pv"
 assert_out_has "no-such-branch" "the unresolvable branch names itself"
-sed -i 's|^branch=.*|branch='"$branch"'|' "$pv/project.kv"
+plat_sed_i 's|^branch=.*|branch='"$branch"'|' "$pv/project.kv"
 assert_rc 0 "…and the resolvable spelling validates again (the arm's own repair path)" -- \
   project_validate "$pv"
 echo "-- a config FAULT stops the ferry; it never reads as an absent value --"
@@ -258,7 +258,7 @@ precond "the fixture config really faults (cross-key invariant violated)" \
 assert_rc 20 "check_budgets on a faulted config stops (rc 20), never parks on an empty cap" -- \
   bash -c '. "$1" "$2" > /dev/null 2>&1; G_SLICE=01 G_STAGE=impl G_ROUND=1; check_budgets' _ "$hf_cfg" "$wsc"
 out=$(bash -c '. "$1" "$2" > /dev/null 2>&1; G_SLICE=01 G_STAGE=impl G_ROUND=1; check_budgets' _ "$hf_cfg" "$wsc" 2>&1 || true)
-printf '%s' "$out" | command grep -q "CONFIG FAULT" \
+command grep -q "CONFIG FAULT" <<< "$out" \
   && ok "and the failure NAMES the config fault (the resolver's own message reaches stderr)" \
   || bad "the stop did not name a config fault: $(printf '%s' "$out" | tail -2 | tr '\n' ' ')"
 command grep -q "budget_wallclock" <<< "$out" \
@@ -307,14 +307,14 @@ out=$(reach "$wsp"); rc=$?
 [ "$rc" -eq 0 ] && [ "$(printf '%s\n' "$out" | command grep -c .)" -eq 1 ] \
   && ok "two topic roles on the SAME backend dedupe to one probe (a second is a wasted live session)" \
   || bad "topic-level set is '$(printf '%s' "$out" | tr '\n' ' ')' (rc=$rc)"
-printf '%s\n' "$out" | command grep -q '^claude|' \
+command grep -q '^claude|' <<< "$out" \
   && ok "and it is the declared one" || bad "set: $out"
 # The discriminating fixture: a backend that appears NOWHERE at topic level.
 precond "the slice-level backend differs from both topic-level ones (else its presence proves nothing)" \
   bash -c '! command grep -q "backend=codex" "$1/config/topic.kv"' _ "$wsp"
 printf 'agent.author.backend=codex\n' > "$wsp/config/slice.05.author.kv"
 out=$(reach "$wsp")
-printf '%s\n' "$out" | command grep -q '^codex|' \
+command grep -q '^codex|' <<< "$out" \
   && ok "a backend named ONLY in slice.05.author.kv is in the reachable set (it would otherwise be spawned on unproven)" \
   || bad "the slice-level backend is invisible to the door: $(printf '%s' "$out" | tr '\n' ' ')"
 printf '%s\n' "$out" | command grep '^codex|' | command grep -q 'slice.05.author.kv' \
@@ -351,7 +351,7 @@ printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$3" >> "%s"\nexit 0\n' "$probelog"
 chmod +x "$stubd/probe.sh"
 door() { bash -c '. "$1" > /dev/null 2>&1; WS=$2; WROOT=$3; L_DIR=$4; probe_backends' _ "$hl" "$1" "$WF_ROOT" "$stubd"; }
 assert_rc 0 "the door runs to completion when every declaration in the set resolves" -- door "$wsp"
-precond "the stub prober was invoked at all (saw $(wc -l < "$probelog"))" \
+precond "the stub prober was invoked at all (saw $(( $(wc -l < "$probelog") )))" \
   test "$(wc -l < "$probelog")" -ge 2
 command grep -qx 'codex' "$probelog" \
   && ok "the slice-only backend is SENT to the probe, not merely enumerated (a record exists for it after a launch)" \
@@ -403,9 +403,9 @@ assert_out_has "coding_rules" "the refusal names the key and what reads it"
 mkdir -p "$repo/docs"; printf '# rules\n' > "$repo/docs/nope.md"
 assert_rc 0 "with the file present it validates (the check is resolution, not existence of a convention)" -- \
   project_validate "$pv"
-sed -i '/^coding_rules=/d' "$pv/project.kv"
+plat_sed_i '/^coding_rules=/d' "$pv/project.kv"
 
-sed -i '/^commit.subject_regex=/d' "$pv/project.kv"
+plat_sed_i '/^commit.subject_regex=/d' "$pv/project.kv"
 assert_rc 2 "missing commit.subject_regex refuses (the commit gate cannot run without it)" -- \
   project_validate "$pv"
 nogit=$(sc_tmpdir)/plainrepo
@@ -431,18 +431,18 @@ assert_rc 2 "doc.repo without doc.branch refuses (half a declaration binds doc s
   project_validate "$pv"
 assert_out_has "only one of doc.repo=/doc.branch=" \
   "the PAIR rule is what refused — not the branch resolution downstream of it"
-sed -i 's|^doc.repo=.*|doc.branch='"$dbranch"'|' "$pv/project.kv"
+plat_sed_i 's|^doc.repo=.*|doc.branch='"$dbranch"'|' "$pv/project.kv"
 assert_rc 2 "and the other half alone refuses too (doc.branch without doc.repo)" -- \
   project_validate "$pv"
 assert_out_has "only one of doc.repo=/doc.branch=" "same rule, both directions"
-sed -i 's|^doc.branch=.*|doc.repo='"$drepo"'|' "$pv/project.kv"
+plat_sed_i 's|^doc.branch=.*|doc.repo='"$drepo"'|' "$pv/project.kv"
 printf 'doc.branch=%s\n' "$dbranch" >> "$pv/project.kv"
 assert_rc 0 "the complete pair validates (good direction)" -- project_validate "$pv"
-sed -i 's|^doc.branch=.*|doc.branch=no-such-doc-branch|' "$pv/project.kv"
+plat_sed_i 's|^doc.branch=.*|doc.branch=no-such-doc-branch|' "$pv/project.kv"
 assert_rc 2 "an unresolvable doc.branch refuses (doc cu SHAs cannot be checked against a phantom tip)" -- \
   project_validate "$pv"
 assert_out_has "doc.branch" "the unresolvable tip names itself"
-sed -i -e 's|^doc.branch=.*|doc.branch='"$dbranch"'|' -e 's|^doc.repo=.*|doc.repo='"$nogit"'|' "$pv/project.kv"
+plat_sed_i -e 's|^doc.branch=.*|doc.branch='"$dbranch"'|' -e 's|^doc.repo=.*|doc.repo='"$nogit"'|' "$pv/project.kv"
 assert_rc 2 "a NON-GIT doc.repo refuses (doc slices commit there; the pipeline is git-shaped)" -- \
   project_validate "$pv"
 assert_out_has "is not a git checkout" \
@@ -636,7 +636,7 @@ echo "no.such.key=1" >> "$wm/config/topic.kv"
 assert_rc 3 "the EDITED file re-validates and FAULTS on the unknown key (new content = new hash; the memo can never serve a stale clean verdict)" -- \
   config_get slice.max_commits --topic-dir "$wm"
 assert_out_has "no.such.key" "the fault names the typo key"
-sed -i '/^no.such.key=/d' "$wm/config/topic.kv"
+plat_sed_i '/^no.such.key=/d' "$wm/config/topic.kv"
 assert_rc 0 "restored content validates again (its clean hash is already memoized)" -- \
   config_get slice.max_commits --topic-dir "$wm"
 
@@ -645,10 +645,10 @@ echo "stage.imp.timeout=900" >> "$wm/config/topic.kv"
 assert_rc 3 "stage.imp.timeout (typo for impl) faults naming the unknown stage" -- \
   config_get slice.max_commits --topic-dir "$wm"
 assert_out_has "imp" "the fault names the typo'd stage"
-sed -i '/^stage.imp.timeout=/d' "$wm/config/topic.kv"
+plat_sed_i '/^stage.imp.timeout=/d' "$wm/config/topic.kv"
 echo "stage.impl.timeout=900" >> "$wm/config/topic.kv"
 assert_rc 0 "a real stage name passes" -- config_get slice.max_commits --topic-dir "$wm"
-sed -i '/^stage.impl.timeout=/d' "$wm/config/topic.kv"
+plat_sed_i '/^stage.impl.timeout=/d' "$wm/config/topic.kv"
 
 echo "-- the memo key binds EVERY validator input (stages.tsv included) --"
 # The stage-membership rule made stages.tsv a validator input; a memo keyed

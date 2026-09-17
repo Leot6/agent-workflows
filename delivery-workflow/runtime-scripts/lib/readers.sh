@@ -410,7 +410,7 @@ status_rounds() {
         W) printf '  + %s park(s) outside any round (%s) — %s held while no round was open\n' "$a" "$c" "$(_st_dur "$b")" ;;
         D) printf '  (%s row(s) on the ledger carry no parseable event=/t= — not counted in any wall; inspect %s/.runtime/state/ledger)\n' "$a" "$WS" ;;
         V) printf '  (the ledger has rotated %s time(s) — rounds before the last rotation live in %s/.runtime/state/%s; this table covers the current segment only)\n' "$a" "$WS" "$b" ;;
-        R) clk=$(date -d "@$d" '+%m-%d %H:%M' 2>/dev/null || printf '@%s' "$d")
+        R) clk=$(plat_epoch_fmt "$d" '%m-%d %H:%M' 2>/dev/null || printf '@%s' "$d")
            notes=""
            if [ "${g:-0}" -gt 0 ] 2>/dev/null; then notes="parked ${g}x ${h:-} $(_st_dur "$f")"; fi
            if [ "${i:-0}" -gt 1 ] 2>/dev/null; then notes="${notes:+$notes · }${i} spawns"; fi

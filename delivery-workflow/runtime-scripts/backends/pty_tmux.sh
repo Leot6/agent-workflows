@@ -8,8 +8,9 @@
 #
 # tmux lessons carried from v1 (paid for): exact-match targets '=<name>' only;
 # send-keys -l for text + a separate Enter; NEVER navigation keys; dual-pid +
-# procfs starttime against pid reuse; fail-closed teardown (never start a
+# start-identity (procfs / ps) against pid reuse; fail-closed teardown (never start a
 # replacement server to prove absence).
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/platform.sh"
 
 _PTY_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
@@ -28,9 +29,8 @@ pty_session_name_ok() { # name
   }
 }
 
-_pty_starttime() { # pid -> procfs starttime (field 22, after the comm paren)
-  [ -r "/proc/$1/stat" ] || return 1
-  awk '{ s=$0; sub(/^[^)]*\) /,"",s); split(s,f," "); print f[20] }' "/proc/$1/stat"
+_pty_starttime() { # pid -> start identity (digits; lib/platform.sh), rc 1 if gone
+  plat_starttime "$1"
 }
 
 # spawn_cold decl session model effort workspace profile prompt_file log_file

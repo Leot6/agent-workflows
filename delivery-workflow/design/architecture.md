@@ -125,7 +125,7 @@ delivery-workflow/
 │   ├── lib/       state config owed gates gates_claims gates_commit notify  # sourced,
 │   │              compose watch resume locks index attempt admission rulings # never run;
 │   │              preflight readers report_routing plan_binds md_span      # (ferry halves,
-│   │                                                                      #   see below)
+│   │              platform (+ darwin-bin/: macOS stand-ins)                #   see below)
 │   ├── backends/  pty_tmux.sh                 # the single structural adapter
 │   └── transports/ bark.sh                    # the notify seam's adapters
 ├── config/            # declarations — data, read-only at run time   [long-lived]

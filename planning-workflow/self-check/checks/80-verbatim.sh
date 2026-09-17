@@ -55,7 +55,7 @@ fi
 
 # The maintainer variant has one home only — it must NOT have been copied into
 # a template, where it would become a second thing to keep in sync.
-copies=$(harvest_docs | xargs grep -o 'maintainer session: workflow tree' 2>/dev/null | wc -l)
+copies=$(( $(harvest_docs | xargs grep -o 'maintainer session: workflow tree' 2>/dev/null | wc -l) ))
 [ "$copies" -eq 1 ] \
   && ok "the maintainer entry line has exactly one home" \
   || bad "the maintainer entry line appears $copies times — it has one home (protocol §7); a second copy in the same file is as much to keep in sync as one in another"

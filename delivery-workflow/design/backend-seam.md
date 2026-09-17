@@ -214,8 +214,8 @@ modal appearing at all is config drift, surfaced not auto-answered.
      warm caller cold-falls-back from, rather than parking on an absent operator;
   3. `send-keys -l '<text>'` then a separate `send-keys Enter`. **Never navigation keys**
      (`Left`/`Escape` are destructive on the measured TUI).
-- **Liveness**: dual-pid (pane pid + tmux server pid) + procfs starttime (pid-reuse
-  defense), recorded in the sessions surface at spawn — the launch command IS the pane
+- **Liveness**: dual-pid (pane pid + tmux server pid) + process start identity (pid-reuse
+  defense; procfs on Linux, `ps` on macOS — `lib/platform.sh`), recorded in the sessions surface at spawn — the launch command IS the pane
   command, so a dead CLI has no pane and pid liveness is the whole dead-detection
   truth (a hypothetical pane-alive-CLI-dead state has no composer and parks
   `unknown_screen`, loudly). Full classification stack in `state-and-liveness.md` §5.

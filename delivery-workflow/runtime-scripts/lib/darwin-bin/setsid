@@ -1,0 +1,14 @@
+#!/usr/bin/perl
+# setsid — macOS stand-in for util-linux setsid (lib/platform.sh puts this
+# directory first on PATH on macOS). `setsid COMMAND...` runs
+# COMMAND as the leader of a new session, in this same process when it can —
+# so `setsid cmd &` leaves $! naming cmd, as it does on Linux. A process that
+# already leads a group cannot call setsid(2); that case forks first.
+use strict; use warnings; use POSIX ();
+if (!@ARGV || $ARGV[0] =~ /^-/) { print STDERR "setsid (darwin-bin): usage: setsid COMMAND... (no options)\n"; exit 1 }
+if (!defined POSIX::setsid()) {
+  my $pid = fork; defined $pid or exit 1;
+  exit 0 if $pid;
+  POSIX::setsid();
+}
+exec { $ARGV[0] } @ARGV or do { print STDERR "setsid: failed to execute $ARGV[0]: $!\n"; exit 127 };

@@ -34,7 +34,7 @@ out=$(shadow_env timeout 120 bash "$PROBE" "$wsf" "$SHADOW/config/backends/test.
 [ $rc -eq 0 ] \
   && ok "the probe passes despite the orphan — a killed launch no longer poisons the next one" \
   || bad "probe rc=$rc with an orphan present: $(printf '%s' "$out" | tail -3 | tr '\n' ' ')"
-printf '%s' "$out" | command grep -q "fenced a leftover scratch session" \
+command grep -q "fenced a leftover scratch session" <<< "$out" \
   && ok "and names what it displaced (loud fence, never a silent reuse)" \
   || bad "the orphan was never named: $(printf '%s' "$out" | head -3 | tr '\n' ' ')"
 scen_end
@@ -77,7 +77,7 @@ printf 'plan-validate=probe-nohb\n' > "$ws/.mock/plan"
 out=$(shadow_env timeout 120 bash "$PROBE" "$ws" "$SHADOW/config/backends/test.kv" test m0 low 2>&1); rc=$?
 [ $rc -eq 1 ] && ok "probe FAILS (rc=1) when the heartbeat hook never fires" \
   || bad "probe rc=$rc on a heartbeat-less backend (want 1)"
-printf '%s' "$out" | command grep -qi 'heartbeat' \
+command grep -qi 'heartbeat' <<< "$out" \
   && ok "failure NAMES the broken promise (heartbeat)" || bad "failure does not name heartbeat: $out"
 command grep -q '^result=fail' "$ws/.runtime/probe/test.kv" 2>/dev/null \
   && ok "result=fail recorded (a later launch refuses on it)" \

@@ -48,12 +48,12 @@ ro_run() { ro_sec "$("$DR" "$1" 2>&1)"; }
 wr=$(mk_topic); printf '# a plan\n\n## 1. work\n' > "$wr/../plan.md"
 printf 'repo=/nonexistent\n' > "$wr/project.kv"    # an adapter that WAS read and carries no route=
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF 'verdict  none (no route line in plan preamble; project.kv declares no route=)' \
+command grep -qF 'verdict  none (no route line in plan preamble; project.kv declares no route=)' <<< "$o" \
   && ok "neither home filled: one none, naming BOTH places it looked" \
   || bad "absent arm wrong; got: $(printf '%s' "$o" | command grep -i verdict | head -2)"
 # and an ABSENT plan is a different absence from a plan without the line
 wr2=$(mk_topic)
-printf '%s\n' "$(ro_run "$wr2")" | command grep -qF 'none (no plan.md beside the workspace' \
+command grep -qF 'none (no plan.md beside the workspace' <<< "$(ro_run "$wr2")" \
   && ok "…and a missing plan.md says so, rather than reading as a plan that carries no verdict" \
   || bad "the two absences print the same sentence"
 # THE SAME PAIR ON THE ADAPTER SIDE, which is the half this file used to pin
@@ -64,7 +64,7 @@ printf '%s\n' "$(ro_run "$wr2")" | command grep -qF 'none (no plan.md beside the
 # the other: the one above HAS an adapter, this one has none.
 wr3=$(mk_topic); printf '# a plan\n\n## 1. work\n' > "$wr3/../plan.md"
 o3=$(ro_run "$wr3")
-printf '%s\n' "$o3" | command grep -qF 'no project.kv beside the workspace' \
+command grep -qF 'no project.kv beside the workspace' <<< "$o3" \
   && ok "no adapter AT ALL reads as a missing file, not as an adapter silent on route=" \
   || bad "absent-adapter arm wrong; got: $(printf '%s' "$o3" | command grep '  verdict' | head -1)"
 command grep -qF 'project.kv declares no route=' <<< "$o3" \
@@ -82,7 +82,7 @@ sym=$(sc_tmpdir)/ws-link; ln -sfn "$wrs" "$sym"
 os=$("$DR" "$sym" 2>&1)
 want=$(basename "$(cd -P "$wrs/.." && pwd -P)")
 printf '%s\n' "$os" | head -1 | command grep -qF "governance report — $want" \
-  && printf '%s\n' "$os" | command grep -qF 'through a symlink' \
+  && command grep -qF 'through a symlink' <<< "$os" \
   && ok "through a symlinked workspace the title and the plan it reads name the SAME topic" \
   || bad "symlinked workspace: title and plan disagree; title=$(printf '%s' "$os" | head -1)"
 
@@ -96,7 +96,7 @@ chmod 000 "$wr/../plan.md"
 if [ -r "$wr/../plan.md" ]; then
   ok "SKIP (named): this user reads a mode-000 file, so the unreadable-plan arm cannot be staged here"
 else
-  printf '%s\n' "$(ro_run "$wr" 2>/dev/null)" | command grep -qF 'could not be READ' \
+  command grep -qF 'could not be READ' <<< "$(ro_run "$wr" 2>/dev/null)" \
     && ok "known-bad: an unreadable plan.md reports a FAULT, never 'no route line in plan preamble'" \
     || bad "an unreadable plan was reported as a plan carrying no verdict"
 fi
@@ -107,7 +107,7 @@ chmod 644 "$wr/../plan.md"
 wr=$(mk_topic)
 printf '# a plan\n\n> **baseline**\n> route: delivery — Q1 yes: forced; Q2 yes; Q3 yes\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — Q1 yes: forced; Q2 yes; Q3 yes' \
+command grep -qF '[plan preamble] delivery — Q1 yes: forced; Q2 yes; Q3 yes' <<< "$o" \
   && ok "a blockquoted route line is carried whole, with its source labelled" \
   || bad "blockquoted verdict lost; got: $(printf '%s' "$o" | command grep -i verdict | head -2)"
 
@@ -118,12 +118,12 @@ printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — Q1 yes: forc
 wr=$(mk_topic)
 printf '# a plan\n\n```\nroute: <lane> — Q1 …; Q2 …; Q3 …\n```\n\nroute: direct — Q1 yes; Q2 yes; Q3 yes\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[plan preamble] direct — Q1 yes; Q2 yes; Q3 yes' \
+command grep -qF '[plan preamble] direct — Q1 yes; Q2 yes; Q3 yes' <<< "$o" \
   && ok "known-bad: a fenced grammar example is skipped and the real line below it is taken" \
   || bad "the fenced example was adopted as the verdict; got: $(printf '%s' "$o" | command grep -i verdict | head -2)"
 wr=$(mk_topic)
 printf '# a plan\n\n```\nroute: <lane> — the grammar\n```\n\n## 1. work\n' > "$wr/../plan.md"
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$(ro_run "$wr")" \
   && ok "…and a preamble holding ONLY the fenced example reads as no verdict at all" \
   || bad "a plan carrying only a grammar example reported a verdict"
 
@@ -138,7 +138,7 @@ printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line
 wr=$(mk_topic)
 printf '# a plan\n\n~~~\nroute: R2 — the tilde-fenced grammar sample\n~~~\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$o" \
   && ok "known-bad: a TILDE-fenced grammar sample is skipped, not adopted as the verdict" \
   || bad "a tilde-fenced sample was adopted; got: $(printf '%s' "$o" | command grep -i verdict | head -2)"
 # …and the fence must OPEN and CLOSE on the tilde marker: a reader that knew
@@ -148,7 +148,7 @@ printf '%s\n' "$o" | command grep -qF 'verdict  none (no route line in plan prea
 wr=$(mk_topic)
 printf '# a plan\n\n~~~\nroute: R2 — the tilde-fenced grammar sample\n~~~\n\nroute: direct — the real verdict\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[plan preamble] direct — the real verdict' \
+command grep -qF '[plan preamble] direct — the real verdict' <<< "$o" \
   && ok "known-bad: a tilde fence opens AND closes — the sample inside it skipped, the real line below taken" \
   || bad "the tilde fence did not both open and close; got: $(printf '%s' "$o" | command grep -i verdict | head -2)"
 # an ATX heading indented 1-3 spaces is a heading (CommonMark), and the
@@ -156,14 +156,14 @@ printf '%s\n' "$o" | command grep -qF '[plan preamble] direct — the real verdi
 wr=$(mk_topic)
 printf '# a plan\n\n  ## 1. work\n\nroute: direct — a post-heading sentence, not the verdict\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$o" \
   && ok "known-bad: a 1-3-space-indented heading ends the preamble — a route: after it is not the verdict" \
   || bad "an indented heading did not end the preamble; got: $(printf '%s' "$o" | command grep -i verdict | head -2)"
 # a SETEXT heading: a paragraph line directly underlined with dashes
 wr=$(mk_topic)
 printf '# a plan\n\nFirst section\n-------------\n\nroute: direct — after a setext heading, not the verdict\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$o" \
   && ok "known-bad: a setext-underlined heading ends the preamble — no raw-line test can see it" \
   || bad "a setext heading did not end the preamble; got: $(printf '%s' "$o" | command grep -i verdict | head -2)"
 # an INDENTED CODE BLOCK: 4+ spaces is code, not text — a route: inside one is
@@ -171,14 +171,14 @@ printf '%s\n' "$o" | command grep -qF 'verdict  none (no route line in plan prea
 wr=$(mk_topic)
 printf '# a plan\n\nThe grammar:\n\n    route: R1 — an indented code block sample\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$o" \
   && ok "known-bad: a route: in a 4-space indented code block is skipped, not adopted" \
   || bad "an indented code sample was adopted; got: $(printf '%s' "$o" | command grep -i verdict | head -2)"
 # …and a TAB indents a code block too, by the same CommonMark count of four
 wr=$(mk_topic)
 printf '# a plan\n\n\troute: R1 — a tab-indented code block sample\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$o" \
   && ok "…and a tab-indented code line is skipped the same way" \
   || bad "a tab-indented sample was adopted; got: $(printf '%s' "$o" | command grep -i verdict | head -2)"
 # the REGRESSION half: a `---` after a blank line is a DIVIDER, not a setext
@@ -189,7 +189,7 @@ printf '%s\n' "$o" | command grep -qF 'verdict  none (no route line in plan prea
 wr=$(mk_topic)
 printf '# a plan\n\n> **baseline** — pin rows quoted the way real preambles carry them\n\n---\n\n> route: delivery — after a divider, still the preamble\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — after a divider, still the preamble' \
+command grep -qF '[plan preamble] delivery — after a divider, still the preamble' <<< "$o" \
   && ok "a divider (blank line before the dashes) does NOT end the preamble — the real plans' shape" \
   || bad "a divider was read as a heading and the preamble ended early; got: $(printf '%s' "$o" | command grep -i verdict | head -2)"
 
@@ -205,24 +205,24 @@ printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — after a divi
 wr=$(mk_topic)
 printf '# a plan\n\n>     route: R1 — a quoted indented code block sample\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$o" \
   && ok "known-bad: a route: in a QUOTED indented code block (marker + 5 spaces) is skipped" \
   || bad "a quoted indented code sample was adopted; got: $(printf '%s' "$o" | command grep -i verdict | head -2)"
 wr=$(mk_topic)
 printf '# a plan\n\n> \troute: R1 — a quoted tab-indented code sample\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$(ro_run "$wr")" \
   && ok "known-bad: a marker + space + TAB is quoted code, not a verdict" \
   || bad "a quoted tab-indented sample was adopted; got: $(printf '%s' "$o" | command grep -i verdict | head -2)"
 wr=$(mk_topic)
 printf '# a plan\n\n>  ## 1. work\n\nroute: direct — after a quoted indented heading\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$o" \
   && ok "a heading indented inside its quote (marker + 2 spaces) ends the preamble" \
   || bad "a quoted indented heading did not end the preamble; got: $(printf '%s' "$o" | command grep -i verdict | head -2)"
 wr=$(mk_topic)
 printf '# a plan\n\n    > route: R1 — a marker indented four spaces\n\n## 1. work\n' > "$wr/../plan.md"
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$(ro_run "$wr")" \
   && ok "a quote MARKER indented four spaces is an indented code line, never de-quoted" \
   || bad "an indented quote marker was de-quoted into a verdict"
 
@@ -235,13 +235,13 @@ printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line
 # the dash half had an arm.
 wr=$(mk_topic)
 printf '# a plan\n\nFirst section\n=====\n\nroute: direct — after an equals setext heading\n' > "$wr/../plan.md"
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$(ro_run "$wr")" \
   && ok "an EQUALS setext underline ends the preamble like a dash one" \
   || bad "an equals underline did not end the preamble"
 # a fence INSIDE a blockquote still fences: the sample in it is not a verdict
 wr=$(mk_topic)
 printf '# a plan\n\n> ```\n> route: R1 — a quoted fenced sample\n> ```\n\n## 1. work\n' > "$wr/../plan.md"
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$(ro_run "$wr")" \
   && ok "a fence inside a blockquote still fences — the route: in it is a sample" \
   || bad "a quoted fenced sample was adopted as the verdict"
 # marker + 4 spaces: the marker consumed one, three remain, a heading at
@@ -249,13 +249,13 @@ printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line
 # is the column rule stated at its flip point.
 wr=$(mk_topic)
 printf '# a plan\n\n>    ## 1. work\n\nroute: direct — after a quoted 3-column heading\n' > "$wr/../plan.md"
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$(ro_run "$wr")" \
   && ok "a heading at three content columns (marker+4) ends the preamble — the marker ate one space" \
   || bad "a marker+4 heading did not end the preamble"
 wr=$(mk_topic)
 printf '# a plan\n\n>     ## not a heading, quoted code\n\nroute: delivery — still the preamble\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — still the preamble' \
+command grep -qF '[plan preamble] delivery — still the preamble' <<< "$o" \
   && ok "…and at four content columns (marker+5) it is CODE, so the preamble runs on past it" \
   || bad "the marker+5 line was read as a heading; got: $(printf '%s' "$o" | command grep -i verdict | head -1)"
 # a LAZY continuation: CommonMark lets a quoted paragraph continue on an
@@ -263,7 +263,7 @@ printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — still the pr
 # preamble's first route: line either way, which is the reading pinned here.
 wr=$(mk_topic)
 printf '# a plan\n\n> some paragraph\nroute: delivery — a lazy continuation of the quote\n\n## 1. work\n' > "$wr/../plan.md"
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF '[plan preamble] delivery — a lazy continuation of the quote' \
+command grep -qF '[plan preamble] delivery — a lazy continuation of the quote' <<< "$(ro_run "$wr")" \
   && ok "a route: line lazily continuing a quoted paragraph is still the preamble's first route: line" \
   || bad "a lazy continuation was dropped from the preamble"
 
@@ -279,12 +279,12 @@ printf '%s\n' "$(ro_run "$wr")" | command grep -qF '[plan preamble] delivery —
 wr=$(mk_topic)
 printf '# a plan\n\nA paragraph\n***\n---\n\nroute: delivery — after a star break and a dash divider\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — after a star break and a dash divider' \
+command grep -qF '[plan preamble] delivery — after a star break and a dash divider' <<< "$o" \
   && ok "known-bad: a *** break interrupts the paragraph, so the --- after it is a divider, not a setext underline" \
   || bad "a star break armed the setext memory and the preamble ended early; got: $(printf '%s' "$o" | command grep -i verdict | head -1)"
 wr=$(mk_topic)
 printf '# a plan\n\nA paragraph\n___\n\nroute: delivery — after an underscore break\n\n## 1. work\n' > "$wr/../plan.md"
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF '[plan preamble] delivery — after an underscore break' \
+command grep -qF '[plan preamble] delivery — after an underscore break' <<< "$(ro_run "$wr")" \
   && ok "…and an underscore break is a break, never paragraph content" \
   || bad "an underscore break was read as paragraph content"
 
@@ -310,40 +310,40 @@ printf '%s\n' "$(ro_run "$wr")" | command grep -qF '[plan preamble] delivery —
 wr=$(mk_topic)
 printf '# p\n\nA paragraph\n- - -\n---\n\nroute: delivery — spaced break then divider\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — spaced break then divider' \
+command grep -qF '[plan preamble] delivery — spaced break then divider' <<< "$o" \
   && ok "known-bad: a SPACED break (- - -) interrupts the paragraph, so the --- after it is a divider" \
   || bad "a spaced break armed the setext memory; got: $(printf '%s' "$o" | command grep -i verdict | head -1)"
 wr=$(mk_topic)
 printf '# p\n\nSection\n---   \n\nroute: direct — after a padded underline\n' > "$wr/../plan.md"
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$(ro_run "$wr")" \
   && ok "known-bad: an underline with TRAILING SPACES still ends the preamble (a post-heading route: is not adopted)" \
   || bad "a padded underline was not recognized and the preamble ran past the heading"
 wr=$(mk_topic)
 printf '# p\n\n```\nroute: <lane> — the sample\n```js\nroute: R9 — the second sample\n```\n\nroute: delivery — the real verdict\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — the real verdict' \
+command grep -qF '[plan preamble] delivery — the real verdict' <<< "$o" \
   && ok "known-bad: a fence line carrying an INFO STRING does not close — the sample after it stays fence content" \
   || bad "a lang-tagged fence line closed the fence and a sample was adopted; got: $(printf '%s' "$o" | command grep -i verdict | head -1)"
 wr=$(mk_topic)
 printf '# p\n\n````\nroute: <lane> — inside the long fence\n```\nstill inside\n````\n\nroute: delivery — after the proper close\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — after the proper close' \
+command grep -qF '[plan preamble] delivery — after the proper close' <<< "$o" \
   && ok "known-bad: a SHORTER fence does not close a longer one — the real verdict is outside, not stranded inside" \
   || bad "a 3-backtick line closed a 4-backtick fence; got: $(printf '%s' "$o" | command grep -i verdict | head -1)"
 wr=$(mk_topic)
 printf '# p\r\n\r\nSection\r\n---\r\n\r\nroute: direct — after a CRLF heading\r\n' > "$wr/../plan.md"
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$(ro_run "$wr")" \
   && ok "known-bad: a CRLF plan's headings still end the preamble (no underline ever matched over \\r)" \
   || bad "a CRLF plan's heading did not end the preamble — the adoption direction"
 wr=$(mk_topic)
 printf '# p\r\n\r\n> intro\r\n\r\n---\r\n\r\nroute: delivery — a CRLF plan\r\n\r\n## 1. work\r\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — a CRLF plan' \
+command grep -qF '[plan preamble] delivery — a CRLF plan' <<< "$o" \
   && ok "…and a CRLF plan's divider is still a divider — the verdict after it is found, byte-clean" \
   || bad "a CRLF plan lost its verdict at the divider; got: $(printf '%s' "$o" | command grep -i verdict | head -1)"
 wr=$(mk_topic)
 printf '# p\n\n===\n---\n\nroute: direct — after an equals paragraph\n' > "$wr/../plan.md"
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$(ro_run "$wr")" \
   && ok "known-bad: an equals run after a blank is a PARAGRAPH, so the dash line under it is its underline" \
   || bad "an equals line after a blank did not arm the paragraph memory"
 
@@ -361,19 +361,19 @@ printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line
 wr=$(mk_topic)
 printf '# p\n\n```\n> ```\nroute: R9 — the sample\n```\n\nroute: delivery — the real verdict\n\n## 1\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — the real verdict' \
+command grep -qF '[plan preamble] delivery — the real verdict' <<< "$o" \
   && ok "known-bad: a quoted fence line is CONTENT of a top-level fence, never its closer — the sample after it is not adopted" \
   || bad "a quoted line closed a top-level fence and a sample was adopted; got: $(printf '%s' "$o" | command grep -i verdict | head -1)"
 wr=$(mk_topic)
 printf '# p\n\n> As documented:\n> ```\nroute: delivery — Q1 no; Q2 yes; Q3 no\n\n## 1\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — Q1 no; Q2 yes; Q3 no' \
+command grep -qF '[plan preamble] delivery — Q1 no; Q2 yes; Q3 no' <<< "$o" \
   && ok "known-bad: a fence opened inside a quote ENDS with the quote — the verdict after it is found, not stranded" \
   || bad "a quoted opener stranded the lines after its quote; got: $(printf '%s' "$o" | command grep -i verdict | head -1)"
 wr=$(mk_topic)
 printf '# p\n\n> ```\n```\nroute: R9 — inside the new fence\n```\n\nroute: delivery — after it\n\n## 1\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — after it' \
+command grep -qF '[plan preamble] delivery — after it' <<< "$o" \
   && ok "known-bad: where a quoted fence dies with its quote, a top-level fence OPENS afresh — the route: after it is fence content" \
   || bad "the line after a dead quoted fence was not read as a new fence opener; got: $(printf '%s' "$o" | command grep -i verdict | head -1)"
 
@@ -381,7 +381,7 @@ printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — after it' \
 # not the topic verdict, and treating it as one would make any later mention win
 wr=$(mk_topic)
 printf '# a plan\n\n## 1. work\n\nroute: direct — a sentence about routing, not the verdict\n' > "$wr/../plan.md"
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line in plan preamble' \
+command grep -qF 'verdict  none (no route line in plan preamble' <<< "$(ro_run "$wr")" \
   && ok "a route: line AFTER the first heading is outside the preamble and is not read" \
   || bad "a post-heading mention was adopted as the topic verdict"
 
@@ -392,7 +392,7 @@ printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'verdict  none (no route line
 wr=$(mk_topic); printf '# a plan\n\n## 1. work\n' > "$wr/../plan.md"
 printf 'repo=/tmp\nbranch=x\ncommit.subject_regex=^x\nroute=delivery — from the adapter\n' > "$wr/project.kv"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[project.kv]    delivery — from the adapter' \
+command grep -qF '[project.kv]    delivery — from the adapter' <<< "$o" \
   && ok "project.kv alone answers, labelled as the adapter (no schema entry needed for the key)" \
   || bad "adapter-only verdict lost; got: $(printf '%s' "$o" | command grep -i verdict | head -2)"
 command grep -q 'DISAGREEMENT' <<< "$o" \
@@ -404,16 +404,16 @@ o=$(ro_run "$wr")
 # disagreement would pass on a broken parser too — one home found, nothing to
 # disagree with, arm green. The fixture must be shown to hold BOTH homes before
 # the absence means anything.
-printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — from the adapter' \
-  && printf '%s\n' "$o" | command grep -qF '[project.kv]    delivery — from the adapter' \
-  && ! printf '%s\n' "$o" | command grep -q 'DISAGREEMENT' \
+command grep -qF '[plan preamble] delivery — from the adapter' <<< "$o" \
+  && command grep -qF '[project.kv]    delivery — from the adapter' <<< "$o" \
+  && ! command grep -q 'DISAGREEMENT' <<< "$o" \
   && ok "both homes present AND identical is not a conflict (the fixture proves both were read)" \
   || bad "the agreeing case is wrong, or the fixture only ever had one home: $(printf '%s' "$o" | command grep -iE 'verdict|DISAGREE')"
 printf '# a plan\n\nroute: planning+delivery — from the plan\n\n## 1. work\n' > "$wr/../plan.md"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -q 'DISAGREEMENT: the two homes carry different verdicts' \
-  && printf '%s\n' "$o" | command grep -qF 'from the plan' \
-  && printf '%s\n' "$o" | command grep -qF 'from the adapter' \
+command grep -q 'DISAGREEMENT: the two homes carry different verdicts' <<< "$o" \
+  && command grep -qF 'from the plan' <<< "$o" \
+  && command grep -qF 'from the adapter' <<< "$o" \
   && ok "known-bad: two homes disagreeing prints BOTH and names the conflict, picking neither" \
   || bad "the disagreement was resolved silently; got: $(printf '%s' "$o" | command grep -iE 'verdict|DISAGREE')"
 
@@ -429,7 +429,7 @@ wrh=$(mk_topic)
 printf '# a plan\n\nroute: delivery — 100%% forced; a|b pipe; $(id) and `id` literal\n\n## 1. work\n' \
   > "$wrh/../plan.md"
 oh2=$(ro_run "$wrh")
-printf '%s\n' "$oh2" | command grep -qF 'delivery — 100% forced; a|b pipe; $(id) and `id` literal' \
+command grep -qF 'delivery — 100% forced; a|b pipe; $(id) and `id` literal' <<< "$oh2" \
   && ok "a verdict carrying %, |, \$( ) and backticks is carried byte-identical (values are printf ARGUMENTS, never formats)" \
   || bad "the verdict was mangled, evaluated or truncated: $(printf '%s' "$oh2" | command grep -i verdict | head -2)"
 
@@ -445,9 +445,9 @@ printf 'repo=/tmp\nbranch=x\ncommit.subject_regex=^x\nroute=delivery — one ver
 o=$(ro_run "$wr")
 # Same discriminability rule as the agreeing arm above: prove both homes are in
 # hand first, or a parser that dropped the trailing-space line would pass here.
-printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — one verdict' \
-  && printf '%s\n' "$o" | command grep -qF '[project.kv]    delivery — one verdict' \
-  && ! printf '%s\n' "$o" | command grep -q 'DISAGREEMENT' \
+command grep -qF '[plan preamble] delivery — one verdict' <<< "$o" \
+  && command grep -qF '[project.kv]    delivery — one verdict' <<< "$o" \
+  && ! command grep -q 'DISAGREEMENT' <<< "$o" \
   && ok "known-bad: trailing whitespace is trimmed off BOTH homes (both present, no conflict) — a markdown line break is not a disagreement" \
   || bad "the trailing-space case is wrong, or one home was silently dropped: $(printf '%s' "$o" | command grep -iE 'verdict|DISAGREE')"
 
@@ -461,9 +461,9 @@ wr=$(mk_topic)
 printf '# a plan\n\nroute: delivery — one verdict\n\n## 1. work\n' > "$wr/../plan.md"
 printf 'repo=/tmp\nbranch=x\ncommit.subject_regex=^x\nroute=delivery — one verdict   \n' > "$wr/project.kv"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — one verdict' \
-  && printf '%s\n' "$o" | command grep -qF '[project.kv]    delivery — one verdict' \
-  && ! printf '%s\n' "$o" | command grep -q 'DISAGREEMENT' \
+command grep -qF '[plan preamble] delivery — one verdict' <<< "$o" \
+  && command grep -qF '[project.kv]    delivery — one verdict' <<< "$o" \
+  && ! command grep -q 'DISAGREEMENT' <<< "$o" \
   && ok "known-bad: trailing whitespace on the ADAPTER side is trimmed too (the other half of the same rule)" \
   || bad "the adapter-side trim is missing or one home was dropped: $(printf '%s' "$o" | command grep -iE 'verdict|DISAGREE')"
 
@@ -472,7 +472,7 @@ printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — one verdict'
 # and the store's own absent-is-not-zero doctrine applies to a declaration.
 wr=$(mk_topic)
 printf '# a plan\n\nroute:\n\n## 1. work\n' > "$wr/../plan.md"
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'a route line in the plan preamble whose value is EMPTY' \
+command grep -qF 'a route line in the plan preamble whose value is EMPTY' <<< "$(ro_run "$wr")" \
   && ok "known-bad: an empty route line reads as EMPTY, never as no line at all" \
   || bad "a declared-but-blank route line was reported as absent"
 # …and a line whose value is WHITESPACE ONLY reads the same. This is the arm that
@@ -481,15 +481,15 @@ printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'a route line in the plan pre
 # four spaces is a blank declaration and not a verdict made of spaces.
 wr=$(mk_topic)
 printf '# a plan\n\nroute:    \n\n## 1. work\n' > "$wr/../plan.md"
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'whose value is EMPTY' \
+command grep -qF 'whose value is EMPTY' <<< "$(ro_run "$wr")" \
   && ok "…and a whitespace-only value reads EMPTY too (the trim and the test are one step apart, in that order)" \
   || bad "a whitespace-only route value was reported as a verdict"
 wr=$(mk_topic)
 printf '# a plan\n\nroute: delivery — from the plan\n\n## 1. work\n' > "$wr/../plan.md"
 printf 'repo=/tmp\nbranch=x\ncommit.subject_regex=^x\nroute=\n' > "$wr/project.kv"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF 'project.kv declares route= EMPTY (declared, not filled)' \
-  && printf '%s\n' "$o" | command grep -qF '[plan preamble] delivery — from the plan' \
+command grep -qF 'project.kv declares route= EMPTY (declared, not filled)' <<< "$o" \
+  && command grep -qF '[plan preamble] delivery — from the plan' <<< "$o" \
   && ok "…and a half-done copy is named even when the OTHER home answered (the shape nobody would suspect)" \
   || bad "an empty declaration went unmentioned beside an answered one; got: $(printf '%s' "$o" | command grep -iE 'verdict|note')"
 
@@ -517,7 +517,7 @@ cardseg=$(awk '/^- \*\*plan-validate\*\*/,/^- \*\*split\*\*/' "$acard" | tr -s '
 # neither failure mode: they cannot be reworded without the program changing, and
 # they do not occur incidentally in prose. Verify by mutation, not by reading.
 for want in 'route:' 'project.kv' 'no route line in plan preamble' 'declared, not filled' 'DISAGREEMENT'; do
-  printf '%s\n' "$cardseg" | command grep -qF "$want" \
+  command grep -qF "$want" <<< "$cardseg" \
     && ok "the card's plan-validate duty names '$want'" \
     || bad "the card's plan-validate segment does not name '$want' — the copy duty and the derived print have drifted apart"
 done
@@ -534,17 +534,17 @@ state_append "$wr" ledger ferry "v=1 t=1600 event=record slice=00 stage=plan-val
 state_append "$wr" ledger ferry "v=1 t=2000 event=spawn slice=01 stage=spec mode=cold" >/dev/null
 state_append "$wr" ledger ferry "v=1 t=3800 event=record slice=01 stage=spec" >/dev/null
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qE 'topic-level ceremony +1 spans +0h10m +25\.0%.*plan-validate' \
+command grep -qE 'topic-level ceremony +1 spans +0h10m +25\.0%.*plan-validate' <<< "$o" \
   && ok "plan-validate buckets as topic-level ceremony from the scope column (600s of 2400s = 25%)" \
   || bad "ceremony bucket wrong; got: $(printf '%s' "$o" | command grep -i ceremony)"
-printf '%s\n' "$o" | command grep -qE 'per-slice work +1 spans +0h30m +75\.0%.*spec' \
+command grep -qE 'per-slice work +1 spans +0h30m +75\.0%.*spec' <<< "$o" \
   && ok "…and spec buckets as per-slice work (1800s = 75%)" \
   || bad "slice bucket wrong; got: $(printf '%s' "$o" | command grep -i 'per-slice')"
 # ONE PAIRING: the two readers agree span for span, asserted rather than assumed
 dc_paired=$("$RS/derive_cost.sh" --stage-totals "$wr" 2>/dev/null \
             | awk -F'\t' '$1=="paired"{printf "%s paired / %s kept / %s dropped", $2, $3, $4}')
 precond "derive_cost --stage-totals answered with a paired row" test -n "$dc_paired"
-printf '%s\n' "$o" | command grep -qF "$dc_paired" \
+command grep -qF "$dc_paired" <<< "$o" \
   && ok "the report's pairing line IS derive_cost's own reading, verbatim ($dc_paired)" \
   || bad "the two readers disagree about the pairing: derive_cost says '$dc_paired'"
 # a stage the scope column does not declare is BUCKETED, never dropped — a
@@ -553,8 +553,8 @@ wr2=$(mk_topic)
 state_append "$wr2" ledger ferry "v=1 t=1000 event=spawn slice=01 stage=notastage mode=cold" >/dev/null
 state_append "$wr2" ledger ferry "v=1 t=1600 event=record slice=01 stage=notastage" >/dev/null
 o2=$(ro_run "$wr2")
-printf '%s\n' "$o2" | command grep -qE 'UNDECLARED stage scope +1 spans.*notastage' \
-  && printf '%s\n' "$o2" | command grep -q 'stages.tsv owes it a row' \
+command grep -qE 'UNDECLARED stage scope +1 spans.*notastage' <<< "$o2" \
+  && command grep -q 'stages.tsv owes it a row' <<< "$o2" \
   && ok "known-bad: a stage stages.tsv does not declare lands in its own bucket and is named" \
   || bad "an undeclared stage vanished from the split; got: $(printf '%s' "$o2" | command grep -iE 'undeclared|spans')"
 # A THIRD scope value must PRINT, not vanish into the denominator. The first
@@ -574,7 +574,7 @@ cp "$RS/derive_report.sh" "$RS/derive_cost.sh" "$tree3/runtime-scripts/"; cp "$R
 cp "$RS/lib/state.sh" "$RS/lib/config.sh" "$tree3/runtime-scripts/lib/"
 { printf 'spec\tslice\n'; printf 'sweep\tbatch\n'; } > "$tree3/config/stages.tsv"
 o5=$(ro_sec "$(bash "$tree3/runtime-scripts/derive_report.sh" "$wr5" 2>&1)")
-printf '%s\n' "$o5" | command grep -qE 'scope=batch +1 spans.*sweep' \
+command grep -qE 'scope=batch +1 spans.*sweep' <<< "$o5" \
   && ok "known-bad: a scope the printer was never told about prints under its own name" \
   || bad "a third scope value vanished from the split; got: $(printf '%s' "$o5" | command grep -E 'spans')"
 pcts=$(printf '%s\n' "$o5" | command grep -oE '[0-9]+\.[0-9]%' | tr -d '%' | awk '{t+=$1} END{printf "%.0f", t}')
@@ -599,14 +599,14 @@ mk_corrupt() { # surface -> a workspace whose <surface> fails its checksum
   printf 'corrupt\n' >> "$w/.runtime/state/$1"; printf '%s' "$w"
 }
 ol=$("$DR" "$(mk_corrupt learnings)" 2>/dev/null)
-printf '%s\n' "$ol" | command grep -qF 'the learnings surface is FAULTED' \
+command grep -qF 'the learnings surface is FAULTED' <<< "$ol" \
   && ok "a corrupt learnings surface is NAMED in the section that reads it" \
   || bad "a corrupt learnings surface was read as an empty one"
 command grep -qE '^  (conformance|precheck|gate|novel) +0$' <<< "$ol" \
   && bad "the closed leak-class set still printed as zeros under a learnings fault — a true notice over false readings" \
   || ok "…and the closed set is NOT printed as zeros it never read"
 oh=$("$DR" "$(mk_corrupt handoff)" 2>/dev/null)
-printf '%s\n' "$oh" | command grep -qF 'the handoff surface is FAULTED' \
+command grep -qF 'the handoff surface is FAULTED' <<< "$oh" \
   && ok "a corrupt handoff surface is NAMED in the section that reads it" \
   || bad "a corrupt handoff surface was read as an empty one"
 # Matched on a fragment that lives on ONE line. The first form grepped a phrase
@@ -614,10 +614,10 @@ printf '%s\n' "$oh" | command grep -qF 'the handoff surface is FAULTED' \
 # the second time in this file — the card arm hit it too and answered by
 # normalising whitespace. Here the cheaper answer is to match what a single line
 # actually holds.
-printf '%s\n' "$oh" | command grep -qF 'a surface this ratio reads is FAULTED' \
+command grep -qF 'a surface this ratio reads is FAULTED' <<< "$oh" \
   && ok "…and the DRE says a surface is faulted rather than claiming the topic had no findings" \
   || bad "the DRE n/a still names the topic over an unreadable surface"
-printf '%s\n' "$oh" | command grep -qE '^  conformance +0$' \
+command grep -qE '^  conformance +0$' <<< "$oh" \
   && ok "…while section 2, whose surface is healthy, still prints its distribution (the fault is scoped to its reader)" \
   || bad "a handoff fault silenced the leak-class section, which does not read handoff"
 
@@ -640,7 +640,7 @@ nfiles=$(printf '%s\n' "$oc" | command grep -cE '^ +\+1 +-0 +f[0-9]+\.txt$')
 [ "$nfiles" -eq 12 ] \
   && ok "a unit touching 20 files prints 12 and stops (a display cap, not a read cap)" \
   || bad "the per-unit file list printed $nfiles lines, so the only unbounded print is still unbounded"
-printf '%s\n' "$oc" | command grep -qF '…and 8 more file(s) — git show --numstat --format=' \
+command grep -qF '…and 8 more file(s) — git show --numstat --format=' <<< "$oc" \
   && ok "…and the truncation is NAMED with the command that shows the rest" \
   || bad "the list was cut silently, which reads as a smaller change than it was"
 
@@ -651,10 +651,10 @@ printf '%s\n' "$oc" | command grep -qF '…and 8 more file(s) — git show --num
 # reading of the mechanism asked what measuring does to the measured.
 wrb=$(mk_topic)
 ob=$(ro_run "$wrb")
-printf '%s\n' "$ob" | command grep -qF 'the ceremony SHARE moves with slice count' \
+command grep -qF 'the ceremony SHARE moves with slice count' <<< "$ob" \
   && ok "the block prints the share's own caveat (a ratio moves when either term does)" \
   || bad "the ceremony share prints with no statement that it is not comparable across widths"
-printf '%s\n' "$ob" | command grep -qF 'nothing here scores a person or a decision' \
+command grep -qF 'nothing here scores a person or a decision' <<< "$ob" \
   && ok "…and says plainly that none of it scores a person or a decision" \
   || bad "the block prints numbers beside a verdict with no boundary on their use"
 
@@ -665,7 +665,7 @@ printf '%s\n' "$ob" | command grep -qF 'nothing here scores a person or a decisi
 wr6=$(mk_topic)
 state_append "$wr6" ledger ferry "v=1 t=1 event=ferry_start" >/dev/null
 o6=$(ro_run "$wr6")
-printf '%s\n' "$o6" | command grep -qF 'the ledger was READ and holds no spawn->record pair at all' \
+command grep -qF 'the ledger was READ and holds no spawn->record pair at all' <<< "$o6" \
   && ok "known-bad: a ledger read with nothing pairable in it says so, never printing as an absent one" \
   || bad "an unpairable ledger printed like a missing one: $(printf '%s' "$o6" | command grep -iA2 'cost split')"
 
@@ -675,8 +675,8 @@ printf '%s\n' "$o6" | command grep -qF 'the ledger was READ and holds no spawn->
 # how the two came to read alike in the first form of this section.
 wr3=$(mk_topic)
 o3=$(ro_run "$wr3")
-printf '%s\n' "$o3" | command grep -qF 'cost split  none (derive_cost.sh declined' \
-  && printf '%s\n' "$o3" | command grep -qF 'not one readable ledger' \
+command grep -qF 'cost split  none (derive_cost.sh declined' <<< "$o3" \
+  && command grep -qF 'not one readable ledger' <<< "$o3" \
   && ok "no ledger prints one none carrying derive_cost's OWN refusal, never a split of zeroes" \
   || bad "an absent ledger produced a cost split, or the reason was re-worded here: $(printf '%s' "$o3" | command grep -i 'cost split')"
 # the corrupt-surface arm: a store FAULT must not read as an absent ledger
@@ -684,7 +684,7 @@ wr4=$(mk_topic)
 state_append "$wr4" ledger ferry "v=1 t=1 event=spawn slice=01 stage=spec mode=cold" >/dev/null
 printf 'corrupt\n' >> "$wr4/.runtime/state/ledger"      # breaks the checksum, not the file
 o4=$(ro_run "$wr4")
-printf '%s\n' "$o4" | command grep -qF 'store FAULT' \
+command grep -qF 'store FAULT' <<< "$o4" \
   && ok "known-bad: a CORRUPT ledger says store FAULT, never 'no ledger' (fault is not absent)" \
   || bad "a checksum fault was reported as an absent ledger; got: $(printf '%s' "$o4" | command grep -i 'cost split')"
 
@@ -700,7 +700,7 @@ faketree=$(sc_tmpdir)/tree; mkdir -p "$faketree/runtime-scripts/lib" "$faketree/
 cp "$RS/derive_report.sh" "$RS/derive_cost.sh" "$faketree/runtime-scripts/"; cp "$RS/lib/report_routing.sh" "$faketree/runtime-scripts/lib/"
 cp "$RS/lib/state.sh" "$RS/lib/config.sh" "$faketree/runtime-scripts/lib/"
 ox=$(ro_sec "$(bash "$faketree/runtime-scripts/derive_report.sh" "$wrx" 2>&1)")
-printf '%s\n' "$ox" | command grep -q 'stages.tsv declared NO scopes' \
+command grep -q 'stages.tsv declared NO scopes' <<< "$ox" \
   && ok "known-bad: an unreadable stages.tsv says so, instead of reading as a table short by every row" \
   || bad "a missing scope table was reported as undeclared stages; got: $(printf '%s' "$ox" | command grep -iE 'undeclared|scopes')"
 
@@ -709,7 +709,7 @@ echo "-- routing outcome: the review-driven units, and the three ways git can an
 # FILES a review-driven commit touched. All three answers are printed shapes —
 # a silent row here would read as "the review changed nothing".
 wr=$(mk_topic)
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'none (no progress row at stage=fix' \
+command grep -qF 'none (no progress row at stage=fix' <<< "$(ro_run "$wr")" \
   && ok "no fix row prints its own none (a review that drove no commit is a real reading)" \
   || bad "an empty fix set printed nothing at all"
 # FAULT IS NOT ABSENT, at the door this section opens. The store's rule is that
@@ -721,8 +721,8 @@ wr=$(mk_topic)
 state_append "$wr" progress session "v=1 t=1 slice=01 stage=fix round=1 cu=1 sha=dead subject=x" >/dev/null
 printf 'corrupt\n' >> "$wr/.runtime/state/progress"
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qF 'the progress surface is FAULTED' \
-  && printf '%s\n' "$o" | command grep -qvF 'no review-driven commit unit on this topic' \
+command grep -qF 'the progress surface is FAULTED' <<< "$o" \
+  && command grep -qvF 'no review-driven commit unit on this topic' <<< "$o" \
   && ok "known-bad: a corrupt progress surface is NAMED and its none says unreadable, never 'no fix row'" \
   || bad "a faulted progress surface read as an empty one: $(printf '%s' "$o" | command grep -iE 'fault|none \(')"
 gitrepo=$(sc_tmpdir)/repo; mkdir -p "$gitrepo"
@@ -733,10 +733,10 @@ wr=$(mk_topic)
 printf 'repo=%s\nbranch=master\ncommit.subject_regex=^x\n' "$gitrepo" > "$wr/project.kv"
 state_append "$wr" progress session "v=1 t=1 slice=01 stage=fix round=1 cu=5 sha=$realsha subject=test: pin the arm" >/dev/null
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qE '^ +\+2 +-0 +f\.txt' \
+command grep -qE '^ +\+2 +-0 +f\.txt' <<< "$o" \
   && ok "a resolvable fix SHA prints its numstat file list from the slice's BOUND checkout" \
   || bad "file list missing; got: $(printf '%s' "$o" | command grep -A2 'cu-5')"
-printf '%s\n' "$o" | command grep -qF 'slice 01 · cu-5' \
+command grep -qF 'slice 01 · cu-5' <<< "$o" \
   && ok "…under a row naming slice, unit and the subject the store already derived from git" \
   || bad "the unit row is malformed: $(printf '%s' "$o" | command grep 'cu-5')"
 # known-bad A: a SHA that no longer resolves — the state every close-out reaches
@@ -744,7 +744,7 @@ printf '%s\n' "$o" | command grep -qF 'slice 01 · cu-5' \
 wr=$(mk_topic)
 printf 'repo=%s\nbranch=master\ncommit.subject_regex=^x\n' "$gitrepo" > "$wr/project.kv"
 state_append "$wr" progress session "v=1 t=1 slice=01 stage=fix round=1 cu=5 sha=0123456789abcdef0123456789abcdef01234567 subject=test: gone" >/dev/null
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'none (sha not found: 0123456789abcdef0123456789abcdef01234567)' \
+command grep -qF 'none (sha not found: 0123456789abcdef0123456789abcdef01234567)' <<< "$(ro_run "$wr")" \
   && ok "known-bad: an unresolvable SHA names itself and says the history moved" \
   || bad "a vanished SHA produced silence or an error"
 # A row with NO subject field, which is where an ordering bug lived: the absence
@@ -755,7 +755,7 @@ printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'none (sha not found: 0123456
 wr=$(mk_topic)
 printf 'repo=%s\nbranch=master\ncommit.subject_regex=^x\n' "$gitrepo" > "$wr/project.kv"
 state_append "$wr" progress session "v=1 t=1 slice=01 stage=fix round=1 cu=8 sha=$realsha " >/dev/null
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF '(no subject on the row)' \
+command grep -qF '(no subject on the row)' <<< "$(ro_run "$wr")" \
   && ok "known-bad: a progress row with no subject= says so, instead of printing the whole record as one" \
   || bad "a subject-less row printed its own record as the subject"
 # AND THE THIRD STATE, which fixtures never produced and the real stores did:
@@ -768,7 +768,7 @@ wr=$(mk_topic)
 printf 'repo=%s\nbranch=master\ncommit.subject_regex=^x\n' "$gitrepo" > "$wr/project.kv"
 state_append "$wr" progress session "v=1 t=1 slice=01 stage=fix round=1 cu=9 sha=$realsha subject=" >/dev/null
 oe=$(ro_run "$wr")
-printf '%s\n' "$oe" | command grep -qF 'subject= declared, not filled' \
+command grep -qF 'subject= declared, not filled' <<< "$oe" \
   && ok "known-bad: an EMPTY subject= is named, not printed as a blank tail (present is not filled)" \
   || bad "an empty subject printed as nothing; got: $(printf '%s' "$oe" | command grep -F 'cu-9' | head -1)"
 command grep -qF '(no subject on the row)' <<< "$oe" \
@@ -784,7 +784,7 @@ binsha=$(git -C "$binrepo" rev-parse HEAD)
 printf 'repo=%s\nbranch=master\ncommit.subject_regex=^x\n' "$binrepo" > "$wr/project.kv"
 state_append "$wr" progress session "v=1 t=1 slice=01 stage=fix round=1 cu=9 sha=$binsha subject=test: a binary unit" >/dev/null
 o=$(ro_run "$wr")
-printf '%s\n' "$o" | command grep -qE '^ +binary +blob\.bin$' \
+command grep -qE '^ +binary +blob\.bin$' <<< "$o" \
   && ok "a binary file reads 'binary', not the nonsense a numstat dash renders as" \
   || bad "binary numstat rendered wrong; got: $(printf '%s' "$o" | command grep -A1 'cu-9' | tail -1)"
 
@@ -797,7 +797,7 @@ printf 'repo=%s\nbranch=master\ncommit.subject_regex=^x\n' "$gitrepo" > "$wr/pro
 ( cd "$gitrepo" && git commit -q --allow-empty -m "test: an empty commit" )
 emptysha=$(git -C "$gitrepo" rev-parse HEAD)
 state_append "$wr" progress session "v=1 t=1 slice=01 stage=fix round=1 cu=7 sha=$emptysha subject=test: an empty commit" >/dev/null
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'none (no file list:' \
+command grep -qF 'none (no file list:' <<< "$(ro_run "$wr")" \
   && ok "known-bad: a resolvable commit with NO file list says so (a merge or an empty commit)" \
   || bad "an empty file list printed nothing at all — the success path has a silent branch"
 
@@ -814,8 +814,8 @@ state_set_slices() { printf 'id=01 status=done risk=low repo=doc title=x\n'; }
 state_set_slices > "$wrbind/.runtime/state/slices"   # header-less on purpose: unreadable
 state_append "$wrbind" progress session "v=1 t=1 slice=01 stage=fix round=1 cu=1 sha=dead subject=x" >/dev/null
 obind=$(ro_run "$wrbind")
-printf '%s\n' "$obind" | command grep -qF 'the slice binding could not be resolved' \
-  && printf '%s\n' "$obind" | command grep -qF 'never read as the code default' \
+command grep -qF 'the slice binding could not be resolved' <<< "$obind" \
+  && command grep -qF 'never read as the code default' <<< "$obind" \
   && ok "known-bad: a faulted slice index forwards the BINDING's own words, not this block's paraphrase" \
   || bad "the binding fault was re-worded or swallowed: $(printf '%s' "$obind" | command grep -A1 'cu-1')"
 
@@ -823,7 +823,7 @@ printf '%s\n' "$obind" | command grep -qF 'the slice binding could not be resolv
 wr=$(mk_topic)
 printf 'repo=%s\nbranch=master\ncommit.subject_regex=^x\n' "$(sc_tmpdir)/notarepo" > "$wr/project.kv"
 state_append "$wr" progress session "v=1 t=1 slice=01 stage=fix round=1 cu=5 sha=$realsha subject=test: nowhere" >/dev/null
-printf '%s\n' "$(ro_run "$wr")" | command grep -qF 'none (repo unreadable:' \
+command grep -qF 'none (repo unreadable:' <<< "$(ro_run "$wr")" \
   && ok "known-bad: an unreadable checkout is named and distinguished from a missing commit" \
   || bad "an unreadable repo was silent, or read as a missing SHA"
 

@@ -118,8 +118,8 @@ command grep -q 'RE-PAGE stopped after 2' "$PAGER_LOG" \
 command grep -q 'launch.sh ack' "$PAGER_LOG" \
   && ok "the re-page names the verb that stops it" || bad "the re-page does not tell the owner how to stop it"
 aud5=$( . "$RS/lib/state.sh"; state_get "$ws5" audit 2>/dev/null || true)
-printf '%s\n' "$aud5" | command grep -q 'repage 1/2 halt_id=H5 ' && printf '%s\n' "$aud5" | command grep -q 'repage 2/2 halt_id=H5 ' \
-  && printf '%s\n' "$aud5" | command grep -q 'repage cap reached (2) for halt H5' \
+command grep -q 'repage 1/2 halt_id=H5 ' <<< "$aud5" && command grep -q 'repage 2/2 halt_id=H5 ' <<< "$aud5" \
+  && command grep -q 'repage cap reached (2) for halt H5' <<< "$aud5" \
   && ok "every re-page and the cap are audited by halt_id (what status --halt counts)" \
   || bad "audit lacks the repage rows: $(printf '%s\n' "$aud5" | command grep repage)"
 # ACKED: an ack PAUSES the ladder for notify.ack_timeout and then paging
@@ -203,7 +203,7 @@ esac
 [ "$(command grep -c 'RE-PAGE [0-9]/2 ' "$PAGER_LOG" || true)" -eq 2 ] \
   && ok "…and exactly repage_max=2 pages went out past it" \
   || bad "pages past a stale ack: $(cat "$PAGER_LOG")"
-printf '%s\n' "$aud6b" | command grep -q 'repage cap reached (2) for halt H6B' \
+command grep -q 'repage cap reached (2) for halt H6B' <<< "$aud6b" \
   && ok "…and the cap is reached and said" \
   || bad "no cap row past a stale ack: $(printf '%s\n' "$aud6b" | command grep repage)"
 
@@ -226,7 +226,7 @@ export PAGER_LOG="$base/pages.6c"; : > "$PAGER_LOG"
 assert_rc 0 "ack_timeout=0 -> a fresh ack holds NOTHING and the ladder runs to the cap (rc 124 = it held, which is the off switch failing)" -- \
   timeout 60 "$d/watchdog.sh" "$ws6c"
 aud6c=$( . "$RS/lib/state.sh"; state_get "$ws6c" audit 2>/dev/null )
-printf '%s\n' "$aud6c" | command grep -q 'ack holds disabled (notify.ack_timeout=0)' \
+command grep -q 'ack holds disabled (notify.ack_timeout=0)' <<< "$aud6c" \
   && ok "…and the off switch is SAID on the audit surface, never silent (repage_max=0's rule, applied to its neighbour)" \
   || bad "ack_timeout=0 changed behaviour with nothing on the audit surface"
 command grep -q 'repage held' <<< "$aud6c" \
@@ -311,11 +311,11 @@ for i in $(seq 1 50); do [ -f "$ws9/.runtime/final-state" ] && break; sleep 0.1;
 sleep 0.3   # past _pager_open, into the wait
 precond "the watchdog reached the pager (final-state parked on disk, process alive)" \
   bash -c 'command grep -q "^class=parked " "$1/.runtime/final-state" && kill -0 "$2"' _ "$ws9" "$wpid"
-t0=$(date +%s%N)
+t0=$(plat_now_ns)
 kill "$wpid"
 for i in $(seq 1 30); do kill -0 "$wpid" 2>/dev/null || break; sleep 0.1; done
 wait "$wpid" 2>/dev/null; wrc=$?
-dt=$(( ($(date +%s%N) - t0) / 1000000 ))
+dt=$(( ($(plat_now_ns) - t0) / 1000000 ))
 if ! kill -0 "$wpid" 2>/dev/null && [ "$dt" -lt 2500 ]; then
   ok "SIGTERM ended the paging watchdog in ${dt}ms with a 60s interval pending (the trap ran inside wait, not after the sleep)"
 else
@@ -437,7 +437,7 @@ mkdir -p "$ack_fake/runtime-docs"
 cp "$WF_ROOT/runtime-docs/cards/pilot.md" "$ack_fake/runtime-docs/pilot.md"
 printf '\nthe watchdog stops re-paging once you ack.\n' >> "$ack_fake/runtime-docs/pilot.md"
 ack_bad=$(ack_retired "$ack_fake"); [ $? -eq 1 ] \
-  && printf '%s\n' "$ack_bad" | command grep -q 'pilot.md' \
+  && command grep -q 'pilot.md' <<< "$ack_bad" \
   && ok "known-bad: one re-introduced phrase FIRES and names the file it is in" \
   || bad "the retired-claim sweep is vacuous — a re-introduced 'stops re-paging' read as clean"
 # WRAPPED known-bad — the shape the line-anchored form could not see, both
@@ -451,8 +451,8 @@ printf '#   ack <ws>                     acknowledge the current park: the watch
 printf '# watchdog RE-PAGES an unresolved, unacknowledged park every interval until\n# `launch.sh ack`, a resolution, or the cap; the cap keeps an unattended\n# weekend from turning the channel into noise.\n' \
   > "$ack_wrap/config/defaults.kv"
 ack_w=$(ack_retired "$ack_wrap"); [ $? -eq 1 ] \
-  && printf '%s\n' "$ack_w" | command grep -q 'launch.sh:1:' \
-  && printf '%s\n' "$ack_w" | command grep -q 'defaults.kv:1:' \
+  && command grep -q 'launch.sh:1:' <<< "$ack_w" \
+  && command grep -q 'defaults.kv:1:' <<< "$ack_w" \
   && ok "known-bad: BOTH wrapped retired claims fire and are named at the line each STARTS on (the two the line-anchored form missed)" \
   || bad "the sweep is still line-anchored — a claim split across a line boundary reads as clean (got: ${ack_w:-<nothing>})"
 # and the matcher must not invent one

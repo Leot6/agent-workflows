@@ -62,11 +62,14 @@ msg=$(printf '%s' "$input" | command grep -oE '"message" *: *"[^"]{0,120}' | hea
 # whitespace-refusing, because a row field is space-delimited: a path carrying
 # a space would silently eat the fields after it. `none` is the honest value for
 # absent-or-unusable, the same word `msg` uses.
-transcript=$(printf '%s' "$input" | command grep -oE '"transcript_path" *: *"[^"]{0,512}"' | head -1 \
+# The bound is applied after extraction: POSIX regex repetition stops at 255
+# (RE_DUP_MAX), and BSD grep refuses a larger count outright.
+transcript=$(printf '%s' "$input" | command grep -oE '"transcript_path" *: *"[^"]*"' | head -1 \
         | sed 's/.*: *"//; s/"$//')
 case "$transcript" in
   ''|*[[:space:]]*) transcript=none ;;
 esac
+[ "${#transcript}" -le 512 ] || transcript=none
 if [ -n "$type" ]; then
   type_src=field
 else

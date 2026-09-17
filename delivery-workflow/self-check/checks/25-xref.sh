@@ -151,7 +151,7 @@ fi
 d=$(sc_tmpdir)/tbl.md
 printf '| id | note |\n|---|---|\n| a | plain |\n| b | `x|y` |\n' > "$d"
 out=$(table_cell_defects "$d")
-printf '%s' "$out" | command grep -q ':4 has 3 cells' \
+command grep -q ':4 has 3 cells' <<< "$out" \
   && ok "known-bad: an unescaped pipe inside a code span is caught (row 4 reads as 3 cells)" \
   || bad "known-bad NOT caught — the arm is blind to the shape it exists for (out: $out)"
 # a fenced block is not a table: the doc most likely to SHOW a broken row is the
@@ -162,7 +162,7 @@ printf '```\n| a | b | c |\n|---|---|\n| shown as an example |\n```\n\n| id | no
   || bad "a fenced example was read as a table: $(table_cell_defects "$d")"
 # ...and a real broken table AFTER a fence is still caught (the fence must not blind the rest)
 printf '```\n| x | y |\n```\n\n| id | note |\n|---|---|\n| b | `x|y` |\n' > "$d"
-printf '%s' "$(table_cell_defects "$d")" | command grep -q ':7 has 3 cells' \
+command grep -q ':7 has 3 cells' <<< "$(table_cell_defects "$d")" \
   && ok "and a real shifted row after a fence is still caught (row 7)" \
   || bad "the fence blinded the arm to the table after it: $(table_cell_defects "$d")"
 

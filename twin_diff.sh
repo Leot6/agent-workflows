@@ -48,10 +48,10 @@ for pkv in "$PLAN_KV"/*.kv; do
   #    Planning stores the bare prompt char; delivery anchors a regex around
   #    it. Compare the prompt CHARACTER each side actually keys on: pull the
   #    non-ASCII prompt char out of delivery's regex (❯/› are the only ones
-  #    any twin declares, measured 2026-08).
+  #    any twin declares). A fixed-string byte match, so no locale is needed.
   p_comp=$(sed -n 's/^composer=//p' "$pkv" | head -1)
   d_line=$(sed -n 's/^sig\.composer_line=//p' "$dkv" | head -1)
-  d_comp=$(printf '%s' "$d_line" | LC_ALL=C.UTF-8 grep -oE '❯|›' | head -1)
+  d_comp=$(printf '%s' "$d_line" | grep -oF -e '❯' -e '›' | head -1)
   if [ -n "$p_comp" ] && [ -n "$d_comp" ]; then
     if [ "$p_comp" = "$d_comp" ]; then
       echo "  composer char agrees: '$p_comp'"

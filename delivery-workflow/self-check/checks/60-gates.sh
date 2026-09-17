@@ -26,7 +26,7 @@ assert_out_has "defaults.kv" "source layer named"
 echo "cap.source_file=900" >> "$ws/project.kv"
 assert_rc 0 "project.kv loosening the cap makes the same file pass (either direction)" -- \
   gates_caps "$ws" "$ws/src/big.sh"
-sed -i '/^cap.source_file=/d' "$ws/project.kv"
+plat_sed_i '/^cap.source_file=/d' "$ws/project.kv"
 echo "-- dirty fingerprint sees untracked files with SPACES in the name --"
 printf 'v1\n' > "$repo/un tracked.txt"
 fpA=$(gates_dirty_fp "$repo")
@@ -172,7 +172,7 @@ echo "-- a lost gate attestation is LOUD (the record is the reviewer's authority
 ( . "$RS/lib/state.sh"; printf 'seed' | state_set "$ws" gates gate ) > /dev/null 2>&1
 corrupt_surface "$ws" gates
 out=$(gates_caps "$ws" "$ws/src/small.sh" 2>&1); rc=$?
-printf '%s' "$out" | command grep -qi "attest" \
+command grep -qi "attest" <<< "$out" \
   && ok "append failure to the gates surface warns on stderr (gate verdict rc unchanged: $rc)" \
   || bad "attestation silently lost — reviewer reads a stale gates surface with no trace"
 ( . "$RS/lib/state.sh"; printf 'reset' | state_set "$ws" gates gate ) > /dev/null 2>&1 || \
@@ -216,12 +216,12 @@ echo "-- cap classification keys on the FILE, never on the path around it --"
 mkdir -p "$ws/unittest/src" "$ws/plain" "$ws/contest-dir"
 awk 'BEGIN{for(i=1;i<=850;i++) print "# line " i}' > "$ws/unittest/src/plain.sh"
 out=$(gates_caps "$ws" "$ws/unittest/src/plain.sh" 2>&1); rc=$?
-[ $rc -eq 1 ] && printf '%s\n' "$out" | command grep -q 'cap.source_file' \
+[ $rc -eq 1 ] && command grep -q 'cap.source_file' <<< "$out" \
   && ok "an 850-line source file under a test-shaped DIRECTORY is refused under cap.source_file (the path is not the file)" \
   || bad "path-shaped misclassification: rc=$rc out=$out"
 awk 'BEGIN{for(i=1;i<=850;i++) print "# line " i}' > "$ws/contest-dir/plain.cc"
 out=$(gates_caps "$ws" "$ws/contest-dir/plain.cc" 2>&1); rc=$?
-[ $rc -eq 1 ] && printf '%s\n' "$out" | command grep -q 'cap.source_file' \
+[ $rc -eq 1 ] && command grep -q 'cap.source_file' <<< "$out" \
   && ok "and under a directory whose NAME merely CONTAINS test (contest-*) — the TMPDIR-collision shape the review found" \
   || bad "substring-dir misclassification: rc=$rc out=$out"
 mkdir -p "$ws/testsuite"
@@ -273,20 +273,20 @@ printf '| cite | the pre-slice wording | target.md#the contract | never closes i
 assert_rc 0 "--at-tip PASSES with a dead-echo row marked baseline (skipped, not resolved)" -- \
   gates_claims "$ws" "$art" --at-tip
 tiprow=$(state_get "$ws" gates | command grep 'gate=spec_claims_tip' | tail -1)
-printf '%s\n' "$tiprow" | command grep -q 'result=PASS .*rows=6 skipped=1' \
+command grep -q 'result=PASS .*rows=6 skipped=1' <<< "$tiprow" \
   && ok "recorded as gate=spec_claims_tip PASS rows=6 skipped=1 (the skip is counted, never silent)" \
   || bad "spec_claims_tip row wrong: $tiprow"
 assert_rc 1 "the SAME artifact without --at-tip FAILS on that row (baseline means nothing at spec-emit)" -- \
   gates_claims "$ws" "$art"
-sed -i '$d' "$art"
-sed -i 's/always closes its handle/now closes its handle late/' "$repo/target.md"
+plat_sed_i '$d' "$art"
+plat_sed_i 's/always closes its handle/now closes its handle late/' "$repo/target.md"
 assert_rc 1 "--at-tip FAILS when the slice's own edit broke a live row's echo (the anchor's shape)" -- \
   gates_claims "$ws" "$art" --at-tip
 assert_out_has "content echo" "…naming the echo that no longer holds"
 state_get "$ws" gates | command grep 'gate=spec_claims_tip' | tail -1 | command grep -q 'result=FAIL' \
   && ok "…recorded FAIL under spec_claims_tip, leaving the spec-emit claims rows untouched" \
   || bad "no FAIL row under spec_claims_tip"
-sed -i 's/now closes its handle late/always closes its handle/' "$repo/target.md"
+plat_sed_i 's/now closes its handle late/always closes its handle/' "$repo/target.md"
 
 echo "-- claims resolver: each bad direction fires --"
 bad_art() { # rowline -> writes artifact with one data row
@@ -533,7 +533,8 @@ mkdir -p "$wssf/slices/01"
   claims_block; } > "$sfspec"
 assert_rc 0 "the spec's claims gate runs (writes the sha-pinned attestation the baseline comes from)" -- \
   gates_claims "$wssf" "$sfspec"
-( cd "$repo" && sed -i '5i inserted-a\ninserted-b\ninserted-c' src/mod.c \
+( cd "$repo" && awk 'NR == 5 { print "inserted-a"; print "inserted-b"; print "inserted-c" } { print }' \
+      src/mod.c > src/mod.c.new && mv src/mod.c.new src/mod.c \
   && git add src/mod.c && git commit -qm "feat: shift the numbering by three" )
 sfconf="$wssf/slices/01/conformance.md"
 printf '# conformance\nre-read at HEAD: src/mod.c:15 verified\n' > "$sfconf"
@@ -552,13 +553,13 @@ assert_rc 0 "a fenced transcript quote is data, not a stamp (the live citation s
 # Shared means the MAXIMAL token, never a substring: a spec stamp :154 does
 # not share a conformance stamp :15 (its own fresh read of a displaced
 # region), and a longer path is a different stamp too.
-sed -i 's|src/mod.c:15 |src/mod.c:154 |' "$sfspec"
+plat_sed_i 's|src/mod.c:15 |src/mod.c:154 |' "$sfspec"
 precond "the spec now stamps :154 and no bare :15 remains (whole file greped)" \
   bash -c '! command grep -qE "src/mod\.c:15([^0-9]|$)" "$1"' _ "$sfspec"
 printf '# conformance\nfresh HEAD read: src/mod.c:15 — this document own stamp\n' > "$sfconf"
 assert_rc 0 "a conformance-OWN stamp that is a substring of the spec's is NOT shared — no refusal (pre-fix: fixed-string match false-refused it)" -- \
   gates_stamp_freshness "$wssf" "$sfconf" "$sfspec"
-sed -i 's|src/mod.c:154 |src/mod.c:15 |' "$sfspec"
+plat_sed_i 's|src/mod.c:154 |src/mod.c:15 |' "$sfspec"
 echo "-- the second shape of the same lie: a COUNT that claims to be current --"
 # The stamp axis sees `path:NN`. The measured miss forwarded a wc -l count from
 # an earlier commit-unit into an "at HEAD" sentence, where no stamp existed to
@@ -654,7 +655,7 @@ precond "the row names its log" test -n "$glog"
 head -1 "$glog" | command grep -qF '$ echo RANGE-MARKER-abc123..HEAD' \
   && ok "the LOG's first line is the invocation, verbatim — the file a reader opens now says what produced it" \
   || bad "log head: $(head -2 "$glog" 2>/dev/null | tr '\n' ' ')"
-printf '%s' "$grow" | command grep -qE 'cmd_fp=[0-9a-f]{8}( |$)' \
+command grep -qE 'cmd_fp=[0-9a-f]{8}( |$)' <<< "$grow" \
   && ok "the ROW carries a fixed-width fingerprint (same idiom as dirty=), never the foreign string itself" \
   || bad "acceptance row: $grow"
 command grep -q 'RANGE-MARKER' <<< "$grow" \
@@ -678,7 +679,7 @@ echo "-- own-tree caps sweep: the workflow's own files obey the declared caps --
 sweep_tree() { # root -> violation lines
   local r=$1 f n
   for f in "$r"/runtime-docs/cards/*.md; do
-    [ -f "$f" ] || continue; n=$(wc -l < "$f")
+    [ -f "$f" ] || continue; n=$(( $(wc -l < "$f") ))
     [ "$n" -le 300 ] || echo "hot card over 300: $f ($n)"
   done
   # ENUMERATED FROM THE DIRECTORY, never a hand-listed set: this loop named
@@ -689,15 +690,15 @@ sweep_tree() { # root -> violation lines
   # corpus was already a directory read for exactly this reason; the two now
   # agree, and a doc added tomorrow is capped the day it lands.
   for f in "$r"/runtime-docs/*.md; do
-    [ -f "$f" ] || continue; n=$(wc -l < "$f")
+    [ -f "$f" ] || continue; n=$(( $(wc -l < "$f") ))
     [ "$n" -le 800 ] || echo "reference doc over 800: $f ($n)"
   done
   for f in "$r"/runtime-scripts/*.sh "$r"/runtime-scripts/*/*.sh; do
-    [ -f "$f" ] || continue; n=$(wc -l < "$f")
+    [ -f "$f" ] || continue; n=$(( $(wc -l < "$f") ))
     [ "$n" -le 800 ] || echo "runtime script over 800: $f ($n)"
   done
   for f in "$r"/self-check/*.sh "$r"/self-check/*/*.sh; do
-    [ -f "$f" ] || continue; n=$(wc -l < "$f")
+    [ -f "$f" ] || continue; n=$(( $(wc -l < "$f") ))
     [ "$n" -le 1000 ] || echo "self-check file over 1000: $f ($n)"
   done
 }
@@ -742,7 +743,7 @@ seq 1 801 > "$fake/runtime-scripts/fat.sh"
 seq 1 1001 > "$fake/self-check/heavy.sh"
 viol=$(sweep_tree "$fake")
 for want in bloated protocol.md never-hand-listed.md fat.sh heavy.sh; do
-  printf '%s\n' "$viol" | command grep -q "$want" \
+  command grep -q "$want" <<< "$viol" \
     && ok "the sweep flags an over-cap $want (that family's known-bad fires)" \
     || bad "own-tree sweep vacuous on $want — an over-cap file passed unseen"
 done
@@ -762,7 +763,7 @@ precond "the sweep saw N>0 candidates (saw ${cand:-0}) — not a vacuous pass" \
 echo "also see $repo/sub/does-not-exist.txt here." >> "$art"
 assert_rc 1 "a dead ABSOLUTE path token FIRES" -- gates_env_sweep "$ws" "$art"
 assert_out_has "does not resolve" "dead token named"
-sed -i '$d' "$art"
+plat_sed_i '$d' "$art"
 # The absolute arm reads a SECOND segment as the claim: a lone `/word` in prose
 # (a fraction, an option name, a bare directory) was 8 of the 12 post-gate hits
 # over six archived trees — none of them a
@@ -774,19 +775,19 @@ cand2=$(state_get "$ws" gates | command grep 'gate=env_sweep' | tail -1 | comman
 [ "${cand2:-0}" = "${cand:-0}" ] \
   && ok "…and they are not counted as candidates either (candidates=$cand2, unchanged): prose is prose, not a passing claim" \
   || bad "prose tokens were counted as candidates: $cand -> $cand2"
-sed -i '$d' "$art"
+plat_sed_i '$d' "$art"
 echo "a two-segment dead absolute /nowhere/at-all still fires." >> "$art"
 assert_rc 1 "a dead two-segment absolute token (/a/b) FIRES (the second segment is the claim)" -- \
   gates_env_sweep "$ws" "$art"
-sed -i '$d' "$art"
+plat_sed_i '$d' "$art"
 echo "a pinned one-segment absolute /Report:12 fires (a pin is always a claim)." >> "$art"
 assert_rc 1 "a one-segment absolute token WITH a :NN pin FIRES (a pin is always a claim)" -- \
   gates_env_sweep "$ws" "$art"
-sed -i '$d' "$art"
+plat_sed_i '$d' "$art"
 echo "pinned read: sub/real.txt:99 (file has 1 line)" >> "$art"
 assert_rc 1 "a path:NN pin beyond EOF FIRES" -- gates_env_sweep "$ws" "$art"
 assert_out_has "pins line 99" "over-EOF pin named"
-sed -i '$d' "$art"
+plat_sed_i '$d' "$art"
 echo "a dead pinned citation lib/nowhere.sh:12 also fires." >> "$art"
 assert_rc 1 "a dead :NN-pinned RELATIVE token FIRES (a pin is always a claim)" -- \
   gates_env_sweep "$ws" "$art"
@@ -863,7 +864,7 @@ assert_rc 0 "undeclared gate records SKIP, never silently passes as green" -- \
 assert_out_has "not declared" "SKIP is named"
 echo "build=true" >> "$ws/project.kv"
 assert_rc 0 "declared gate command runs verbatim and passes" -- gates_project "$ws" build
-sed -i 's/^build=true/build=false/' "$ws/project.kv"
+plat_sed_i 's/^build=true/build=false/' "$ws/project.kv"
 assert_rc 1 "failing gate command FAILS with rc and log path" -- gates_project "$ws" build
 assert_out_has "log:" "failure points at the log"
 assert_rc 2 "unknown gate name refused (closed set)" -- gates_project "$ws" deploy
@@ -885,7 +886,7 @@ precond "the two checkouts have DIFFERENT HEADs (else the pin assertion is vacuo
 activate_stage "$wsd" impl 02 1 nDOC
 assert_rc 0 "a gate runs while the doc-bound slice is active" -- gates_caps "$wsd" "$wsd/src/f.sh"
 rec=$(state_get "$wsd" gates | tail -1)
-printf '%s\n' "$rec" | command grep -qF " sha=$(git -C "$drepo" rev-parse HEAD) " \
+command grep -qF " sha=$(git -C "$drepo" rev-parse HEAD) " <<< "$rec" \
   && ok "the attestation pins the DOC repo's HEAD (evidence binds the slice's own checkout)" \
   || bad "attestation pinned the wrong checkout: $rec"
 activate_stage "$wsd" impl 01 1 nCOD

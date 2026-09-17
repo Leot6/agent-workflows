@@ -50,7 +50,7 @@ command grep -qE '^ghost_rc=[0-9]* ghost_why=[^ ]+ inject_why=[^ ]+$' "$pk" \
 command grep -qE '^version=0\.1$' "$pk" \
   && ok "CLI version pinned in the probe record (version TOKEN of mock-cli-0.1)" || bad "no version pin: $(command grep '^version=' "$pk")"
 out=$(shadow_env timeout 30 bash "$PROBE" "$ws" "$SHADOW/config/backends/test.kv" test m0 low 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s' "$out" | command grep -q cached \
+[ $rc -eq 0 ] && command grep -q cached <<< "$out" \
   && ok "same-version re-probe is a cached pass (no second session spent)" \
   || bad "cache miss on unchanged version: rc=$rc $out"
 live=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | command grep -c '^delivery-' || true)
@@ -76,14 +76,14 @@ precond "the leak counter can count a delivery- session (saw $_seen with a probe
 echo "-- S9c (cache identity): a changed declaration at the SAME version is never a cached pass --"
 TDECL="$SHADOW/config/backends/test.kv"
 cp "$TDECL" "$TDECL.orig"
-sed -i 's|^sig.awaiting_input=.*|sig.awaiting_input=NEVER-MATCHES-ANYTHING-XYZZY|' "$TDECL"
+plat_sed_i 's|^sig.awaiting_input=.*|sig.awaiting_input=NEVER-MATCHES-ANYTHING-XYZZY|' "$TDECL"
 precond "the declaration mutation landed" \
   bash -c 'command grep -q XYZZY "$1"' _ "$TDECL"
 out=$(shadow_env timeout 120 bash "$PROBE" "$ws" "$TDECL" test m0 low 2>&1); rc=$?
 command grep -q cached <<< "$out" \
   && bad "a MUTATED declaration at an unchanged version returned a cached pass — 'declarations are promises, the probe makes them facts' does not survive a declaration edit" \
   || ok "changed declaration -> the cache does not answer (fresh probe forced)"
-[ $rc -eq 1 ] && printf '%s' "$out" | command grep -q 'awaiting_input=miss' \
+[ $rc -eq 1 ] && command grep -q 'awaiting_input=miss' <<< "$out" \
   && ok "the fresh probe FAILS on the broken signature (rc=1, awaiting_input=miss named)" \
   || bad "probe rc=$rc on a broken awaiting signature (want 1 + awaiting_input=miss): $(printf '%s' "$out" | tail -3 | tr '\n' ' ')"
 mv "$TDECL.orig" "$TDECL"
@@ -110,10 +110,10 @@ out=$(shadow_env timeout 120 bash "$PROBE" "$wsq" "$SHADOW/config/backends/test.
 [ $rc -eq 4 ] \
   && ok "a quota-dead backend exits 4 (its own code), not 1 — nothing about the declaration was disproved" \
   || bad "probe rc=$rc on a quota-dead backend (want 4): $(printf '%s' "$out" | tail -3 | tr '\n' ' ')"
-printf '%s' "$out" | command grep -q "out of quota" \
+command grep -q "out of quota" <<< "$out" \
   && ok "the refusal names the backend, not the declaration" \
   || bad "refusal text blames the wrong thing: $(printf '%s' "$out" | tail -2 | tr '\n' ' ')"
-printf '%s' "$out" | command grep -q "resets 19:45 Asia/Shanghai" \
+command grep -q "resets 19:45 Asia/Shanghai" <<< "$out" \
   && ok "and forwards the pane's OWN reset time verbatim (19:45 Asia/Shanghai — never a computed or default one)" \
   || bad "the captured quota line did not reach the operator: $(printf '%s' "$out" | tail -2 | tr '\n' ' ')"
 command grep -q '^result=backend_quota' "$wsq/.runtime/probe/test.kv" \
@@ -136,10 +136,10 @@ out=$(shadow_env timeout 120 bash "$PROBE" "$wso" "$SHADOW/config/backends/test.
 [ $rc -eq 4 ] \
   && ok "an overloaded backend exits 4 (the availability code), not 1 — nothing about the declaration was disproved" \
   || bad "probe rc=$rc on an overloaded backend (want 4): $(printf '%s' "$out" | tail -3 | tr '\n' ' ')"
-printf '%s' "$out" | command grep -q "up and refusing" \
+command grep -q "up and refusing" <<< "$out" \
   && ok "the refusal names the backend, not the declaration" \
   || bad "refusal text blames the wrong thing: $(printf '%s' "$out" | tail -2 | tr '\n' ' ')"
-printf '%s' "$out" | command grep -q "relaunch on judgment rather than on a clock" \
+command grep -q "relaunch on judgment rather than on a clock" <<< "$out" \
   && ok "and it says there is NO reset time to wait for — the one thing that differs from the quota refusal" \
   || bad "the advice did not reach the operator: $(printf '%s' "$out" | tail -3 | tr '\n' ' ')"
 command grep -q '^result=backend_overloaded' "$wso/.runtime/probe/test.kv" \
@@ -172,11 +172,11 @@ command grep -q "probe: cached pass" <<< "$out" \
   printf 'reason=backend_quota\nslice=00\nstage=plan-validate\nresolved=1\nt=%s\n' "$(date +%s)" \
     | state_set "$ws" halt ferry ) > /dev/null
 out=$(shadow_env timeout 30 bash "$PROBE" "$ws" "$SHADOW/config/backends/test.kv" test m0 low 2>&1)
-printf '%s' "$out" | command grep -q "probe: cached pass" \
+command grep -q "probe: cached pass" <<< "$out" \
   && ok "a RESOLVED quota halt returns the cache to service (the bypass reads the standing fact, not history)" \
   || bad "the cache stayed bypassed after the halt was cleared: $out"
 
-sed -i 's/^probe_impl=.*/probe_impl=STALE-IMPL/' "$ws/.runtime/probe/test.kv"
+plat_sed_i 's/^probe_impl=.*/probe_impl=STALE-IMPL/' "$ws/.runtime/probe/test.kv"
 out=$(shadow_env timeout 120 bash "$PROBE" "$ws" "$TDECL" test m0 low 2>&1); rc=$?
 command grep -q cached <<< "$out" \
   && bad "a pass attested by a DIFFERENT probe/adapter implementation was served from cache — a mutated primitive coasts on its pre-mutation pass" \
@@ -205,7 +205,7 @@ mv "$mutant.orig" "$mutant"
 # identically — a key that drifted per run would never answer from cache again.
 shadow_env timeout 120 bash "$PROBE" "$ws" "$TDECL" test m0 low > /dev/null 2>&1
 out=$(shadow_env timeout 120 bash "$PROBE" "$ws" "$TDECL" test m0 low 2>&1)
-printf '%s' "$out" | command grep -q "cached pass" \
+command grep -q "cached pass" <<< "$out" \
   && ok "two runs over identical content key the same — the cache answers again (a per-run key would cost a live session every launch, which is the defect this replaces)" \
   || bad "identical content did not key identically: $(printf '%s' "$out" | tail -2 | tr '\n' ' ')"
 

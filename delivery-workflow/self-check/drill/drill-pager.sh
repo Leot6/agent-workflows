@@ -59,11 +59,11 @@ sleep 0.5
 precond "the ferry parked and the watchdog is PAGING (final-state parked on disk, pid alive)" \
   bash -c 'command grep -q "^class=parked " "$1/.runtime/final-state" && kill -0 "$2"' _ "$ws2" "$wpid"
 out=$(shadow_env "$LAUNCH" status "$ws2" --halt 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q '^re-paged *0 time' && printf '%s\n' "$out" | command grep -q '^acked *no' \
+[ $rc -eq 0 ] && command grep -q '^re-paged *0 time' <<< "$out" && command grep -q '^acked *no' <<< "$out" \
   && ok "status --halt over the live park: 0 re-pages (interval pending), not acked" \
   || bad "status --halt: rc=$rc $(printf '%s' "$out" | command grep -E 're-paged|acked' | tr '\n' ' ')"
 out=$(shadow_env "$LAUNCH" stop "$ws2" 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 're-paging stopped' \
+[ $rc -eq 0 ] && command grep -q 're-paging stopped' <<< "$out" \
   && ok "launch.sh stop over the paging watchdog: rc=0 and it says the paging was ended" \
   || bad "stop over a pager: rc=$rc $(printf '%s' "$out" | head -2 | tr '\n' ' ')"
 for _ in $(seq 1 20); do kill -0 "$wpid" 2>/dev/null || break; sleep 0.1; done
@@ -75,7 +75,7 @@ wait "$wpid" 2>/dev/null
 [ ! -s "$PAGES" ] || command grep -q 'RE-PAGE' "$PAGES" && bad "a re-page went out before the interval: $(cat "$PAGES")" || ok "no re-page was sent in the meantime (interval 60 s)"
 shadow_env "$LAUNCH" ack "$ws2" > /dev/null 2>&1 && ok "launch.sh ack over the real halt: rc=0" || bad "ack refused over a real unresolved halt"
 out=$(shadow_env "$LAUNCH" status "$ws2" --halt 2>&1)
-printf '%s\n' "$out" | command grep -q '^acked *at t=[0-9]' \
+command grep -q '^acked *at t=[0-9]' <<< "$out" \
   && ok "status --halt reads the receipt back: acked at t=<epoch>" \
   || bad "status --halt does not show the ack: $(printf '%s' "$out" | command grep acked)"
 scen_end

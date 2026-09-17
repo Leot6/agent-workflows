@@ -162,7 +162,7 @@ _g5() { # file -> "file:line: text" per green-on-failure grep pipe
 # the maintainer twice in one round on an empty-file byte-diff.) This file counts
 # failures rather than calling ok/bad, so the precondition is written in that
 # form.
-n5=$(cd "$ROOT" && find self-check -name '*.sh' -type f | wc -l)
+n5=$(( $(cd "$ROOT" && find self-check -name '*.sh' -type f | wc -l) ))
 if [ "$n5" -lt 20 ]; then
   echo "FAIL trap-5 sweep floor: only $n5 shell files under self-check/ — a zero from this sweep would be a floor, not a verdict"
   fails=$((fails+1))

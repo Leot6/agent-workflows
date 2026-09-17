@@ -45,7 +45,7 @@ assert_out_has "forbidden trailer" "the failure names the prohibition and its so
   && git commit -qm "feat: unit with a lowercased forbidden trailer" -m "co-authored-by: someone <x@y.invalid>" )
 assert_rc 1 "casing does not evade the prohibition (git trailers are case-insensitive)" -- \
   gates_commit "$ws" "$(git -C "$repo" rev-parse HEAD)"
-sed -i '/^commit.forbid_trailers=/d' "$ws/project.kv"
+plat_sed_i '/^commit.forbid_trailers=/d' "$ws/project.kv"
 assert_rc 0 "with the declaration removed, the same commit passes (the gate reads the project, never a baked-in list)" -- \
   gates_commit "$ws" "$fsha"
 
@@ -155,7 +155,7 @@ for suffixed in 'E10-b' 'E10_b' 'E10.b' 'E10b'; do
     printf '\n```\nE10: grep -c kTable src/mod.c\n```\n'
   } > "$csx"
   out=$(gates_claims "$ws" "$csx" 2>&1); rc=$?
-  [ $rc -eq 1 ] && printf '%s' "$out" | command grep -qF "$suffixed" \
+  [ $rc -eq 1 ] && command grep -qF "$suffixed" <<< "$out" \
     && ok "'$suffixed' is refused and quoted as written (any suffix character, not just letters)" \
     || bad "'$suffixed' rc=$rc — it binds to E10's command silently: $(printf '%s' "$out" | head -1)"
 done

@@ -55,7 +55,7 @@ precond "the volatile header was extracted (non-empty)" test -n "$hdr"
 command grep -q 'mode=' <<< "$hdr" \
   && bad "the rendered header states a spawn mode: '$(printf '%s\n' "$hdr" | command grep 'mode=')' — the template says it never does, and the value is the pre-spawn INTENT, which a cold-fallback falsifies" \
   || ok "the rendered volatile header states no spawn mode — template rule and render agree"
-printf '%s\n' "$hdr" | command grep -q "stage=plan-validate slice=00 round=1 attempt=1" \
+command grep -q "stage=plan-validate slice=00 round=1 attempt=1" <<< "$hdr" \
   && ok "and the rest of the identity line is intact (stage/slice/round/attempt)" \
   || bad "identity line damaged: $(printf '%s\n' "$hdr" | command grep '^stage=')"
 

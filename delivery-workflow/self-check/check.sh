@@ -4,7 +4,8 @@
 # own source changes, plus before any resume after a maintenance hold.
 #
 # Order is declared by filename prefix and is load-bearing:
-#   1x store        — FIRST: everything else's fixtures stand on the store
+#   0x platform     — FIRST: every later check stands on lib/platform.sh's answers
+#   1x store        — everything else's fixtures stand on the store
 #   2x config       — resolution + schema faults
 #   3x closure      — cross-file referential integrity (stages/templates/schema/backends)
 #   4x–8x mechanisms
@@ -45,6 +46,7 @@ set -uo pipefail
 export LC_ALL=C
 SC_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 export SELFCHECK_DIR="$SC_DIR"
+. "$SC_DIR/../runtime-scripts/lib/platform.sh"
 
 usage() {
   echo "usage: check.sh [--list] [--only <name>] [--changed] [--jobs <n>] [--verbose]" >&2
@@ -127,8 +129,12 @@ scope_for_changes() { # [repo-dir]
 # server) and the rc is 124, which the renderer names. The bound is a literal
 # and deliberately not a config key: it is a property of this runner.
 CHECK_TIMEOUT=600
+# stdin is /dev/null: a check inherits the dispatch loop's stdin in parallel
+# mode, and anything in it that reads stdin (a state_set with no pipe, a
+# script(1) pty) would eat the names of the checks still to launch — measured
+# twice, as checks that never started and read as 0s failures.
 run_check() { # path logfile -> rc
-  timeout "$CHECK_TIMEOUT" bash "$1" > "$2" 2>&1
+  timeout "$CHECK_TIMEOUT" bash "$1" > "$2" 2>&1 < /dev/null
 }
 # Each check's last measured duration, the launch order's only input.
 CHECK_DURATIONS_DIR="${TMPDIR:-/tmp}/dwsc-durations-$(id -u)"
@@ -281,7 +287,7 @@ run_parallel() { # tmpdir <- "name<TAB>path" on stdin -> "name<TAB>rc<TAB>secs<T
 # the wiring in main is exercised by every run (the `tree:` summary line).
 tree_snapshot() { # root -> sorted "kind mode path" for every entry + "md5  path" for every regular file
   ( cd "$1" 2>/dev/null || exit 1
-    find . -path ./.git -prune -o -printf '%y %m %p\n'
+    plat_tree_entries
     find . -path ./.git -prune -o -type f -print0 | xargs -0 -r md5sum
   ) | sort
 }
@@ -374,7 +380,7 @@ main() {
   echo "== delivery-workflow self-check =="
   echo "workflow root: $(cd "$SC_DIR/.." && pwd)"
   [ -n "$SUBSET" ] && echo "scope: changed files touch the formal doc region only -> $(printf '%s' "$SUBSET" | tr '\n' ' ')"
-  LOAD_START=$(cat /proc/loadavg 2>/dev/null || echo unavailable)
+  LOAD_START=$(plat_loadavg)
   echo "loadavg start: $LOAD_START"
   T0=$(date +%s)
 
@@ -392,7 +398,7 @@ main() {
     local name path
     while IFS=$'\t' read -r name path; do
       [ -n "$ONLY" ] && [ "$name" != "$ONLY" ] && continue
-      [ -n "$SUBSET" ] && ! printf '%s\n' "$SUBSET" | command grep -qxF "$name" && continue
+      [ -n "$SUBSET" ] && ! command grep -qxF "$name" <<< "$SUBSET" && continue
       printf '%s\t%s\n' "$name" "$path"
     done < <(collect)
   }
@@ -428,7 +434,7 @@ main() {
   local tree_ok=1
   tree_verdict "$snap_before" "$snap_after" || tree_ok=0
   rm -f "$snap_before" "$snap_after"
-  LOAD_END=$(cat /proc/loadavg 2>/dev/null || echo unavailable)
+  LOAD_END=$(plat_loadavg)
   echo "loadavg start: $LOAD_START"
   echo "loadavg end:   $LOAD_END"
   WALL=$(( $(date +%s) - T0 ))

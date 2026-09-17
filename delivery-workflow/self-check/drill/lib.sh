@@ -74,7 +74,7 @@ run_ferry() { # ws logfile -> rc
 # lengthens a genuine wedge, which fails either way.
 DRILL_PATIENCE_S=${DRILL_PATIENCE_S:-300}
 drill_ticks() { echo $(( DRILL_PATIENCE_S * 2 )); }        # the loops sleep 0.5s
-drill_load()  { cut -d' ' -f1-3 /proc/loadavg 2>/dev/null || echo unknown; }
+drill_load()  { plat_loadavg; }
 
 # Run a ferry in its own session and stop it at the FIRST ledger line matching
 # the pattern — the kill/recovery drills' common shape: what the scenario

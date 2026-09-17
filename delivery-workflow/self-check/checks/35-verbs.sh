@@ -32,7 +32,7 @@ precond "docs name N>=6 verbs (saw: $(printf '%s' "$dv" | tr '\n' ' '))" \
   test "$(printf '%s\n' "$dv" | command grep -c .)" -ge 6
 missing=""
 for v in $dv; do
-  printf '%s\n' "$di" | command grep -qxF "$v" || missing="$missing $v"
+  command grep -qxF "$v" <<< "$di" || missing="$missing $v"
 done
 [ -z "$missing" ] \
   && ok "every documented verb exists in launch.sh's dispatch" \
@@ -47,7 +47,7 @@ precond "architecture §9 extracted (N>0 lines)" \
   test "$(printf '%s\n' "$s9" | command grep -c .)" -ge 5
 missing9=""
 for v in $di; do
-  printf '%s\n' "$s9" | command grep -q "\`$v" || missing9="$missing9 $v"
+  command grep -q "\`$v" <<< "$s9" || missing9="$missing9 $v"
 done
 [ -z "$missing9" ] \
   && ok "every launch.sh dispatch verb appears in architecture §9 ('the single entry' enumeration is complete)" \
@@ -110,7 +110,7 @@ t0=$(( $(date +%s) - 7200 ))
   state_append "$sws" ledger ferry "v=1 t=$((t0 + 3601)) event=spawn slice=02 stage=spec round=1 attempt=1 mode=cold session=s2 backend=codex model=m effort=low" ) > /dev/null
 out=$("$LAUNCH" status "$sws" --slices 2>&1); rc=$?
 [ $rc -eq 0 ] && ok "status --slices renders (rc=0)" || bad "rc=$rc: $(printf '%s' "$out" | head -3 | tr '\n' ' ')"
-printf '%s\n' "$out" | command grep -qE '^01 ' && printf '%s\n' "$out" | command grep -qE '^02 ' \
+command grep -qE '^01 ' <<< "$out" && command grep -qE '^02 ' <<< "$out" \
   && ok "every index row is listed, in id order" || bad "rows missing: $out"
 printf '%s\n' "$out" | command grep -E '^01 ' | command grep -q 'work 30m · total 1h00m' \
   && ok "BOTH clocks are rendered and LABELLED, and work EXCLUDES the credited park (1h wall, 30m parked -> work 30m)" \
@@ -232,8 +232,8 @@ assert_rc 0 "--amend re-records an existing id" -- \
   "$RECORD" decision "$ws" --dp 01/DP-1 --class A --amend \
   --text "choice=x over y basis=coding-rules evidence=grep, count corrected 3->4 revert=swap"
 dp_last=$( . "$RS/lib/state.sh"; state_get "$ws" decisions | command grep 'dp=01/DP-1 ' | tail -1)
-printf '%s\n' "$dp_last" | command grep -qE "(^| )amends=$dp_t0( |$)" \
-  && printf '%s\n' "$dp_last" | command grep -qE '(^| )status=pending_audit( |$)' \
+command grep -qE "(^| )amends=$dp_t0( |$)" <<< "$dp_last" \
+  && command grep -qE '(^| )status=pending_audit( |$)' <<< "$dp_last" \
   && ok "the amend row names the row it supersedes (amends=$dp_t0) and re-enters pending_audit" \
   || bad "the amend row is not a supersede: $dp_last"
 [ "$( . "$RS/lib/state.sh"; state_get "$ws" decisions | command grep -c 'dp=01/DP-1 ')" -eq 2 ] \
@@ -259,7 +259,7 @@ cp "$ws/project.kv" "$wsp2/project.kv" 2>/dev/null || true   # cannot see it
 out=$(bash "$RS/launch.sh" launch "$wsp2" 2>&1); rc=$?
 livelaunch=$out                      # every live-tree launch's output, for the
                                      # no-real-session floor at the end
-[ $rc -ne 0 ] && printf '%s' "$out" | command grep -qi "whitespace\|space" \
+[ $rc -ne 0 ] && command grep -qi "whitespace\|space" <<< "$out" \
   && ok "spaced workspace path refused with a self-describing message" \
   || bad "rc=$rc msg='$(printf '%s' "$out" | tail -1)' — hooks/cmd.launch interpolate this path unquoted"
 
@@ -295,8 +295,8 @@ printf 'repo=%s/notarepo\nbranch=main\ncommit.subject_regex=^(feat|fix|chore): [
 printf 'agent.reviewer.backend=claude\n' > "$wsk/topic.kv"
 out=$(bash "$RS/launch.sh" launch "$wsk" 2>&1) || true
 livelaunch="$livelaunch$out"
-printf '%s' "$out" | command grep -q "topic.kv" \
-  && printf '%s' "$out" | command grep -qi "workspace ROOT\|config/topic.kv" \
+command grep -q "topic.kv" <<< "$out" \
+  && command grep -qi "workspace ROOT\|config/topic.kv" <<< "$out" \
   && ok "preflight names the stray file AND where the topic layer is really read from" \
   || bad "stray root .kv passed unnamed: $(printf '%s' "$out" | command grep -i kv | head -2)"
 # and the legal one must stay silent, or the warning is noise on every launch
@@ -325,9 +325,9 @@ printf 'agent.implementer.effort=max\nagent.reviewer.backend=claude\ncap.commit_
 out=$(bash "$RS/launch.sh" launch "$wsk" 2>&1) || true
 livelaunch="$livelaunch$out"
 precond "the inert-key launch ran and produced output (${#out} bytes)" test -n "$out"
-printf '%s' "$out" | command grep -q "config key(s) nothing reads there" \
-  && printf '%s' "$out" | command grep -q "agent.implementer.effort" \
-  && printf '%s' "$out" | command grep -q "config/topic.kv" \
+command grep -q "config key(s) nothing reads there" <<< "$out" \
+  && command grep -q "agent.implementer.effort" <<< "$out" \
+  && command grep -q "config/topic.kv" <<< "$out" \
   && ok "preflight names the inert config keys BY NAME and where that layer is really read from" \
   || bad "an inert config key in project.kv passed unnamed: $(printf '%s' "$out" | command grep -i 'config key' | head -1)"
 # the cap key rode in the same file and must NOT be named: caps are the one
@@ -382,8 +382,8 @@ echo "-- no live-tree launch fixture spawns a real backend session (cost + quota
 precond "the live-tree launches produced output to judge (${#livelaunch} bytes)" \
   test -n "$livelaunch"
 door=""
-printf '%s' "$livelaunch" | command grep -q "is not a git checkout" && door="project.kv git-checkout gate (clean tree — the intended terminus)"
-printf '%s' "$livelaunch" | command grep -q "uncommitted changes under" && door="${door:+$door + }preflight dirty-tree gate (the tree under test is dirty)"
+command grep -q "is not a git checkout" <<< "$livelaunch" && door="project.kv git-checkout gate (clean tree — the intended terminus)"
+command grep -q "uncommitted changes under" <<< "$livelaunch" && door="${door:+$door + }preflight dirty-tree gate (the tree under test is dirty)"
 precond "each live-tree launch stopped at a NAMED preflight door, not by dying${door:+ — $door}" \
   test -n "$door"
 command grep -qE "probe: spawning|watchdog started" <<< "$livelaunch" \
@@ -405,24 +405,24 @@ shws="$shroot/topics/dirtytopic/delivery"
 mkdir -p "$shws/config"                          # no project.kv: the clean
 precond "shadow launch.sh exists" test -f "$SHL"  # path refuses THERE, later
 out=$(bash "$SHL" launch "$shws" 2>&1); rc=$?
-[ $rc -ne 0 ] && printf '%s' "$out" | command grep -q "project.kv" \
+[ $rc -ne 0 ] && command grep -q "project.kv" <<< "$out" \
   && ok "CLEAN shadow tree passes the dirty gate and refuses later at project.kv (null control)" \
   || bad "clean-tree control broken: rc=$rc '$(printf '%s' "$out" | tail -1)'"
 echo tampered >> "$shroot/wf/runtime-scripts/ferry.sh"
 out=$(bash "$SHL" launch "$shws" 2>&1); rc=$?
-[ $rc -ne 0 ] && printf '%s' "$out" | command grep -q "commit or stash" \
+[ $rc -ne 0 ] && command grep -q "commit or stash" <<< "$out" \
   && ok "a TRACKED edit inside the workflow subtree refuses, self-describing (pre-fix: silently adopted and pinned as 'the tree')" \
   || bad "dirty tree not refused: rc=$rc '$(printf '%s' "$out" | tail -1)'"
 ( cd "$shroot" && git checkout -q wf/runtime-scripts/ferry.sh )
 echo brand-new > "$shroot/wf/runtime-scripts/new-half.sh"
 out=$(bash "$SHL" launch "$shws" 2>&1); rc=$?
-printf '%s' "$out" | command grep -q "commit or stash" \
+command grep -q "commit or stash" <<< "$out" \
   && ok "an UNTRACKED file inside the subtree refuses too (a brand-new script is exactly the edit that bites)" \
   || bad "untracked dirt not refused: '$(printf '%s' "$out" | tail -1)'"
 rm -f "$shroot/wf/runtime-scripts/new-half.sh"
 echo drift > "$shroot/outside.txt"
 out=$(bash "$SHL" launch "$shws" 2>&1); rc=$?
-printf '%s' "$out" | command grep -q "project.kv" \
+command grep -q "project.kv" <<< "$out" \
   && ok "dirt OUTSIDE the workflow subtree does NOT refuse (scoped -- . like the pin; sibling changes are not this tree's)" \
   || bad "outside-subtree dirt tripped the gate: '$(printf '%s' "$out" | tail -1)'"
 
@@ -445,7 +445,7 @@ command grep -qi 'will be honored' <<< "$out" \
 [ -e "$stopws/.runtime/stop-request" ] \
   && bad "a stop-request file was written with nothing running to read it — the next launch deletes it silently" \
   || ok "no stop-request file is left behind when nothing can honour one"
-printf '%s\n' "$out" | command grep -qi 'nothing to stop\|already' \
+command grep -qi 'nothing to stop\|already' <<< "$out" \
   && ok "and it says what IS true: the topic is not running" \
   || bad "the message does not state the actual state: '$out'"
 # Good direction: a live runner still gets the file and the graceful promise.
@@ -454,7 +454,7 @@ out=$("$LAUNCH" stop "$stopws" 2>&1); rc=$?
 [ -e "$stopws/.runtime/stop-request" ] \
   && ok "with a live watchdog the request IS written (the path that works is untouched)" \
   || bad "no stop-request written while a live watchdog holds the topic: '$out'"
-printf '%s\n' "$out" | command grep -q 'park' \
+command grep -q 'park' <<< "$out" \
   && ok "and the message promises the graceful park it can actually deliver" \
   || bad "message: '$out'"
 # …and it must say WHAT IS STILL RUNNING, because `stop` addresses the ferry and
@@ -470,13 +470,13 @@ printf '%s\n' "$$" > "$stopws/.runtime/watchdog.pid"
   printf 'state=running\nslice=03\nstage=spec\nt=%s\n' "$(date +%s)" \
     | state_set "$stopws" stage ferry ) > /dev/null
 out=$("$LAUNCH" stop "$stopws" 2>&1)
-printf '%s\n' "$out" | command grep -q 'STILL RUNNING' \
+command grep -q 'STILL RUNNING' <<< "$out" \
   && ok "a stop over a RUNNING stage says the stage is not what was stopped" \
   || bad "stop said nothing about the live stage: '$out'"
-printf '%s\n' "$out" | command grep -q 'slice 03 stage spec' \
+command grep -q 'slice 03 stage spec' <<< "$out" \
   && ok "and it names which one (slice 03 stage spec) — the ferry already knew" \
   || bad "the warning does not name the live stage: '$out'"
-printf '%s\n' "$out" | command grep -qi 'HARVEST' \
+command grep -qi 'HARVEST' <<< "$out" \
   && ok "and says the next launch will harvest its record — the half that voids an intervention silently" \
   || bad "the consequence is not stated: '$out'"
 ( . "$RS/lib/state.sh"
@@ -505,7 +505,7 @@ out=$("$LAUNCH" stop "$lockws" 2>&1)
 [ -e "$lockws/.runtime/stop-request" ] \
   && ok "a live FERRY with no watchdog still gets the stop-request written" \
   || bad "no request written though a live ferry holds the host lock: '$out'"
-printf '%s\n' "$out" | command grep -q 'ferry' \
+command grep -q 'ferry' <<< "$out" \
   && ok "and the message names the ferry as the thing that will park" \
   || bad "message names no honourer: '$out'"
 rm -rf "$lockd" "$lockws/.runtime/stop-request"
@@ -536,15 +536,15 @@ out=$("$LAUNCH" status "$hws" "$hflag" 2>&1); rc=$?
 [ $rc -eq 0 ] \
   && ok "the flag the halt frame points at ('$hflag') is accepted by status (rc=0)" \
   || bad "the panel points at 'launch.sh status <ws> $hflag' and status refuses it: $(printf '%s' "$out" | head -1)"
-printf '%s\n' "$out" | command grep -q "$long" \
+command grep -q "$long" <<< "$out" \
   && ok "and it prints the detail UNTRUNCATED — the thing the pointer promises" \
   || bad "the full detail did not come out: $(printf '%s' "$out" | head -2 | tr '\n' ' ')"
-printf '%s\n' "$out" | command grep -q 'class_u' \
+command grep -q 'class_u' <<< "$out" \
   && ok "with the halt's own fields around it (reason named)" \
   || bad "no reason field in the output: $out"
 hws2=$(mk_ws "$base" haltptr2 "$repo" "$branch")
 out=$("$LAUNCH" status "$hws2" "$hflag" 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -qi 'not parked\|no halt' \
+[ $rc -eq 0 ] && command grep -qi 'not parked\|no halt' <<< "$out" \
   && ok "on an unparked topic it says so rather than faulting" \
   || bad "rc=$rc on an unparked topic: $out"
 # fault != absent, in this reader too. status_slices refuses a corrupt index
@@ -554,7 +554,7 @@ out=$("$LAUNCH" status "$hws2" "$hflag" 2>&1); rc=$?
 # available lie, and the first version of it did exactly that.
 corrupt_surface "$hws" halt
 out=$("$LAUNCH" status "$hws" "$hflag" 2>&1); rc=$?
-[ $rc -ne 0 ] && printf '%s\n' "$out" | command grep -q 'CORRUPT' \
+[ $rc -ne 0 ] && command grep -q 'CORRUPT' <<< "$out" \
   && ok "a CORRUPT halt surface refuses as corrupt, never as 'not parked' (rc=$rc)" \
   || bad "rc=$rc over a corrupt halt surface: $out"
 # The field list is the SURFACE's, not one this reader maintains: park() gains
@@ -566,7 +566,7 @@ hws3=$(mk_ws "$base" haltptr3 "$repo" "$branch")
   printf 'reason=blocked\ndetail=short one\nslice=03\nstage=impl\nt=%s\nresolved=0\nbrand_new_field=xyzzy\n' \
     "$(date +%s)" | state_set "$hws3" halt ferry ) > /dev/null
 out=$("$LAUNCH" status "$hws3" "$hflag" 2>&1)
-printf '%s\n' "$out" | command grep -q 'brand_new_field .*xyzzy' \
+command grep -q 'brand_new_field .*xyzzy' <<< "$out" \
   && ok "a field this reader has never heard of still prints (the surface is the list)" \
   || bad "an unknown halt field was dropped: $out"
 command grep -q '^next ' <<< "$out" \
@@ -580,10 +580,10 @@ hws4=$(mk_ws "$base" haltptr4 "$repo" "$branch")
   printf 'reason=blocked\nA STRAY LINE WITH NO KEY\nslice=07\ndetail=short\n' \
     | state_set "$hws4" halt ferry ) > /dev/null
 out=$("$LAUNCH" status "$hws4" "$hflag" 2>&1)
-printf '%s\n' "$out" | command grep -q 'A STRAY LINE WITH NO KEY' \
+command grep -q 'A STRAY LINE WITH NO KEY' <<< "$out" \
   && ok "a line that is not key=value is shown, not swallowed (marked, so it cannot read as a field)" \
   || bad "the reader dropped a line the surface holds: $out"
-printf '%s\n' "$out" | command grep -q 'reason.*blocked' \
+command grep -q 'reason.*blocked' <<< "$out" \
   && ok "and the real fields still render around it" || bad "$out"
 
 echo "-- stop over a PAGING watchdog ends the paging; over a DRIVER it defers as before --"
@@ -598,7 +598,7 @@ printf 'class=parked detail=fixture t=1\n' > "$pws/.runtime/final-state"
 # Captured first, never `cmd | grep -q`: under pipefail the pipeline reports the
 # LEFT side's rc, and a panel over a bare workspace exits non-zero on purpose.
 pout=$("$LAUNCH" status "$pws" 2>&1 || true)
-printf '%s\n' "$pout" | command grep -q 'PAGING' \
+command grep -q 'PAGING' <<< "$pout" \
   && ok "the panel names the state PAGING (a live pid beside class=parked is not 'alive', nothing is driving)" \
   || bad "the panel does not say PAGING over a paging watchdog: $(printf '%s\n' "$pout" | command grep -i watchdog | head -2 | tr '\n' ' ')"
 assert_rc 0 "stop over a live pid beside class=parked (the pager) returns 0" -- "$LAUNCH" stop "$pws"
@@ -626,7 +626,7 @@ assert_rc 2 "ack on an unparked topic refuses — nothing to acknowledge" -- "$L
     "$(date +%s)" | state_set "$aws" halt ferry
   state_audit "$aws" watchdog "repage 1/6 halt_id=HA1 reason=class_u" ) > /dev/null
 out=$("$LAUNCH" status "$aws" "$hflag" 2>&1)
-printf '%s\n' "$out" | command grep -q '^re-paged *1 time' && printf '%s\n' "$out" | command grep -q '^acked *no' \
+command grep -q '^re-paged *1 time' <<< "$out" && command grep -q '^acked *no' <<< "$out" \
   && ok "status --halt reads the pager's record from the audit surface: 1 re-page, not acked" \
   || bad "status --halt does not show the pager's record: $(printf '%s' "$out" | command grep -E 're-paged|acked' | tr '\n' ' ')"
 assert_rc 0 "ack over an unresolved halt writes the receipt (rc=0)" -- "$LAUNCH" ack "$aws"
@@ -634,21 +634,21 @@ assert_rc 0 "ack over an unresolved halt writes the receipt (rc=0)" -- "$LAUNCH"
   && ok "the ack is an audit row keyed by halt_id — the row the pager and status both read" \
   || bad "no ack row on the audit surface"
 out=$("$LAUNCH" status "$aws" "$hflag" 2>&1)
-printf '%s\n' "$out" | command grep -q '^acked *at t=[0-9]' \
+command grep -q '^acked *at t=[0-9]' <<< "$out" \
   && ok "status --halt now prints acked at t=<epoch> (re-paging paused, not stopped)" \
   || bad "status --halt does not show the ack: $(printf '%s' "$out" | command grep acked)"
 # WHICH STATE HOLDS NOW, not what the mechanism does: an ack from this morning
 # and one from a minute ago are opposite operational facts, and rendering the
 # mechanism left `at t=` as the operator's only clue. The ack above is seconds
 # old, so the window is open.
-printf '%s\n' "$out" | command grep -q 'is PAUSED now' \
+command grep -q 'is PAUSED now' <<< "$out" \
   && ok "…and a FRESH ack renders as paused-now, with the remainder of the window" \
   || bad "a seconds-old ack does not render as a live pause: $(printf '%s' "$out" | command grep acked)"
 # the same row, one expired window later: the newest ack row is an ancient one.
 ( . "$RS/lib/state.sh"
   state_append "$aws" audit operator "v=1 t=$(( $(date +%s) - 99999 )) by=operator msg=ack halt_id=HA1 reason=class_u — long expired" ) > /dev/null
 out=$("$LAUNCH" status "$aws" "$hflag" 2>&1)
-printf '%s\n' "$out" | command grep -q 'window CLOSED' \
+command grep -q 'window CLOSED' <<< "$out" \
   && ok "…and an EXPIRED ack says the window closed and paging resumed (the state, not the mechanism)" \
   || bad "an expired ack still renders as a live pause: $(printf '%s' "$out" | command grep acked)"
 ( . "$RS/lib/state.sh"; state_put "$aws" halt ferry "resolved=1" ) > /dev/null
@@ -663,7 +663,7 @@ assert_rc 2 "status --halt over a CORRUPT audit surface refuses — re-page/ack 
 assert_out_has "CORRUPT" "the refusal names the fault class"
 corrupt_surface "$aws" halt
 out=$("$LAUNCH" ack "$aws" 2>&1); rc=$?
-[ $rc -ne 0 ] && printf '%s\n' "$out" | command grep -q 'CORRUPT' \
+[ $rc -ne 0 ] && command grep -q 'CORRUPT' <<< "$out" \
   && ok "a CORRUPT halt surface refuses as corrupt, never as 'nothing to acknowledge' (fault != absent)" \
   || bad "rc=$rc over a corrupt halt surface: $out"
 
@@ -687,8 +687,8 @@ done
 [ -z "$ms_bad" ] \
   && ok "every mode_src the ferry stamps is in the declared set ($ms_n values, extracted not listed)" \
   || bad "mode_src values outside the declared set:$ms_bad — a typo here becomes a silent bucket in the cost report"
-printf '%s\n' "$ms_vals" | command grep -qx designed \
-  && printf '%s\n' "$ms_vals" | command grep -qx warm \
+command grep -qx designed <<< "$ms_vals" \
+  && command grep -qx warm <<< "$ms_vals" \
   && ok "…including both poles: a cold the contract asked for, and the warm that means no cold at all" \
   || bad "attempt.sh no longer stamps both 'designed' and 'warm' — the split has lost one of its two ends"
 command grep -q 'mode_src=\$mode_src' "$RS/lib/attempt.sh" \

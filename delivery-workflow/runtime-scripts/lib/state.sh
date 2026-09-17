@@ -18,6 +18,9 @@
 # Append surfaces carry a line cap; on exceedance the surface is rotated to
 # <surface>.<epoch>.rot beside it — named, never silent.
 
+_STATE_LIB_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+. "$_STATE_LIB_DIR/platform.sh"
+
 _state_root() { printf '%s/.runtime/state' "$1"; }
 _state_tmpdir() { printf '%s/.runtime/tmp' "$1"; }
 
@@ -124,8 +127,9 @@ state_host_lock_path() { # ws -> lock path
   printf '%s/.runtime/state/lock\n' "$1"
 }
 # rc 0 + "pid=<p>" when a LIVE ferry holds the lock; rc 1 otherwise (absent or
-# stale). Starttime reading is _pty_starttime — the ONE procfs starttime truth
-# (backends/pty_tmux.sh); both callers source it before calling here.
+# stale). Starttime reading is _pty_starttime — the ONE starttime truth
+# (backends/pty_tmux.sh, over lib/platform.sh); both callers source it before
+# calling here.
 state_host_holder() { # ws
   local lock pid start
   lock=$(state_host_lock_path "$1")
@@ -206,7 +210,14 @@ state_get() { # workspace surface  -> body on stdout
     echo "FAULT: surface '$s' checksum mismatch in $f (header=$want body=$got) — inspect; do not treat as absent" >&2
     return 3
   fi
-  if [ "${#all[@]}" -gt 0 ]; then printf '%s\n' "${all[@]}"; fi
+  # A reader that stops early (`| grep -q`, `| head`) is not a store fault. The
+  # rc above is decided before a byte is written, and the write ignores
+  # SIGPIPE: otherwise a pipeline under `pipefail` reads a matched surface as
+  # rc 141 whenever the body outruns the pipe buffer (16K on macOS, 64K on
+  # Linux) — a present record read as absent.
+  if [ "${#all[@]}" -gt 0 ]; then
+    ( trap '' PIPE; printf '%s\n' "${all[@]}" ) 2>/dev/null || :
+  fi
 }
 
 # Last value of key= in a kv surface. rc 1 covers both absent-surface and

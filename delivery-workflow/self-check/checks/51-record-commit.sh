@@ -50,10 +50,10 @@ echo "-- the ledger's subject and sha are DERIVED, never argued (single source: 
 # so the writer takes it — an optional argument is a second source for a fact git
 # already answers, which is what review-standards §2's single-source rule forbids.
 prow=$( . "$RS/lib/state.sh"; state_get "$wsg" progress | command grep "cu=1" | tail -1)
-printf '%s' "$prow" | command grep -q "subject=feat: landed unit one" \
+command grep -q "subject=feat: landed unit one" <<< "$prow" \
   && ok "subject is derived from the commit (no --subject was passed)" \
   || bad "subject not derived from git: $prow"
-printf '%s' "$prow" | command grep -qE "(^| )sha=[0-9a-f]{40}( |$)" \
+command grep -qE "(^| )sha=[0-9a-f]{40}( |$)" <<< "$prow" \
   && ok "sha is normalised to the 40-char form the verify resolved" \
   || bad "sha is not canonical in the row: $prow"
 # a SHORT sha in, the canonical form out — the form must not be the author's choice
@@ -71,10 +71,10 @@ out_re=$("$RECORD" progress "$wsg" --cu 1 --sha "$sha_short" 2>&1); rc_re=$?
   | command grep -qE "(^| )supersedes=$sha_ok( |$)" \
   && ok "re-registering cu 1 at a new sha marks the row supersedes=<the earlier sha>" \
   || bad "the re-registration carries no supersedes= naming the earlier sha (rc=$rc_re): $( . "$RS/lib/state.sh"; state_get "$wsg" progress | tail -1)"
-printf '%s' "$out_re" | command grep -q "SUPERSEDES" \
+command grep -q "SUPERSEDES" <<< "$out_re" \
   && ok "…and the confirmation says which registration it retired" \
   || bad "the confirmation is silent about the supersede: $out_re"
-printf '%s\n' "$prow" | command grep -qE "(^| )supersedes=( |$)" \
+command grep -qE "(^| )supersedes=( |$)" <<< "$prow" \
   && ok "a FIRST registration carries supersedes= empty — present on every row, so absent and not-applicable never look alike" \
   || bad "the first registration lacks the (empty) supersedes field: $prow"
 assert_rc 2 "re-registering cu 1 at the SAME sha refuses (a duplicate row is not a landing)" -- \
@@ -82,7 +82,7 @@ assert_rc 2 "re-registering cu 1 at the SAME sha refuses (a duplicate row is not
 assert_out_has "already registered" "the refusal names the duplicate and the way to replace a unit"
 # known-bad: the second source is refused, and the refusal says why
 out=$("$RECORD" progress "$wsg" --cu 1 --sha "$sha_ok" --subject "a hand-written label" 2>&1); rc=$?
-[ $rc -ne 0 ] && printf '%s' "$out" | command grep -q "DERIVED from the sha" \
+[ $rc -ne 0 ] && command grep -q "DERIVED from the sha" <<< "$out" \
   && ok "known-bad: --subject is refused, and the refusal names git as the single source" \
   || bad "--subject accepted or refused without a reason (rc=$rc): $out"
 echo "-- registration is the FIRST door for the whole MESSAGE convention --"
@@ -105,7 +105,7 @@ echo "commit.forbid_trailers=Co-Authored-By" >> "$wsg/project.kv"
 assert_rc 2 "progress REFUSES a trailer the project forbids (same derivation as emit)" -- \
   "$RECORD" progress "$wsg" --cu 1 --sha "$(git -C "$repo" rev-parse HEAD)"
 assert_out_has "forbidden trailer" "the prohibition and its source key are named"
-sed -i '/^commit.forbid_trailers=/d' "$wsg/project.kv"
+plat_sed_i '/^commit.forbid_trailers=/d' "$wsg/project.kv"
 # A tab inside a failure's text is not exotic — git subjects may hold one, and
 # the transport between the derivation and this refusal IS tab-delimited. Split
 # on more than the first tab and the reader loses the tail of the sentence: here,
@@ -234,7 +234,7 @@ assert_out_has "acceptance" "refusal names the missing acceptance evidence"
 assert_rc 2 "a FAILED acceptance record still refuses (red gate never emitted over)" -- \
   "$RECORD" emit "$wsg" --stage impl --nonce nI1 --verdict built --confidence HIGH \
   --refine-rounds 1
-sed -i 's/^acceptance=false/acceptance=true/' "$wsg/project.kv"
+plat_sed_i 's/^acceptance=false/acceptance=true/' "$wsg/project.kv"
 ( . "$RS/lib/gates.sh"; gates_project "$wsg" acceptance ) > /dev/null 2>&1
 assert_rc 0 "with a PASS acceptance record pinned to the current tree, impl emits" -- \
   "$RECORD" emit "$wsg" --stage impl --nonce nI1 --verdict built --confidence HIGH \
@@ -284,7 +284,7 @@ assert_rc 0 "re-run at the new tip -> fix emits" -- \
 # The arms below reuse this workspace and re-run acceptance alone before each
 # emit; with build/lint still declared their pins would go stale on every new
 # commit and the arms would read the wrong door. Back to the original set.
-sed -i '/^build=true$/d; /^lint=true$/d' "$wsg/project.kv"
+plat_sed_i '/^build=true$/d; /^lint=true$/d' "$wsg/project.kv"
 
 echo "-- the emit-time commit gate covers the LEDGER's units, not just the spec's --"
 # The fix-stage escape, anchored twice (slice 01 postcheck.2, slice 12
@@ -370,7 +370,7 @@ precond "the unit really reached the ledger (registration accepted it under the 
 # still refuses. (Before the message half moved to the registration door, this
 # fixture landed a subject that was non-conforming from the start — which that
 # door now stops, so the case had to be built the way it really occurs.)
-sed -i '/^commit.subject_regex=/d' "$wsb/project.kv"
+plat_sed_i '/^commit.subject_regex=/d' "$wsb/project.kv"
 printf 'commit.subject_regex=^(feat|fix)\\([a-z]+\\): [a-z]\n' >> "$wsb/project.kv"
 assert_rc 2 "impl emit refuses on a landed subject the CURRENT convention rejects (registration is not the authority)" -- \
   "$RECORD" emit "$wsb" --stage impl --nonce nI3 --verdict built --confidence HIGH \

@@ -1,0 +1,29 @@
+#!/usr/bin/perl
+# flock — macOS stand-in for util-linux flock (lib/platform.sh puts this
+# directory first on PATH on macOS). The fd form only:
+#   flock [-n | -w SECS] [-x | -s | -u] FD
+# The lock is taken on the caller's already-open descriptor, inherited here,
+# so it lives exactly as long as that descriptor — flock(2) locks belong to the
+# open file description, which gives the same auto-release on close or death.
+use strict; use warnings; use Fcntl qw(:flock); use Time::HiRes qw(time sleep);
+my ($nb, $wait, $op) = (0, undef, LOCK_EX);
+while (@ARGV && $ARGV[0] =~ /^-/) {
+  my $a = shift;
+  if    ($a eq '-n' || $a eq '--nonblock')  { $nb = 1 }
+  elsif ($a eq '-w' || $a eq '--timeout')   { $wait = shift }
+  elsif ($a =~ /^-(x|e)$/ || $a eq '--exclusive') { $op = LOCK_EX }
+  elsif ($a eq '-s' || $a eq '--shared')    { $op = LOCK_SH }
+  elsif ($a eq '-u' || $a eq '--unlock')    { $op = LOCK_UN }
+  elsif ($a eq '--') { last }
+  else { print STDERR "flock (darwin-bin): option '$a' not supported\n"; exit 64 }
+}
+if (@ARGV != 1 || $ARGV[0] !~ /^\d+$/) { print STDERR "flock (darwin-bin): only the file-descriptor form is supported\n"; exit 64 }
+my $fh;
+open($fh, '<&=', $ARGV[0]) or open($fh, '>&=', $ARGV[0]) or do { print STDERR "flock: $ARGV[0]: bad file descriptor\n"; exit 1 };
+exit(flock($fh, LOCK_UN) ? 0 : 1) if $op == LOCK_UN;
+exit 0 if flock($fh, $op | LOCK_NB);
+exit 1 if $nb;
+exit(flock($fh, $op) ? 0 : 1) unless defined $wait;
+my $end = time + $wait;
+while (time < $end) { sleep 0.05; exit 0 if flock($fh, $op | LOCK_NB) }
+exit 1;

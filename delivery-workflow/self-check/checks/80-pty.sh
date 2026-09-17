@@ -21,7 +21,7 @@ DECL="$(sc_tmpdir)/claude-static.kv"
 sed 's/^frame_settle=.*/frame_settle=0.05/' "$REAL_DECL" > "$DECL"
 _decl_diff_is_settle_only() { # diff exits 1 on a difference, which pipefail would read as the grep failing
   local d; d=$(diff "$REAL_DECL" "$DECL" || true)
-  [ "$(printf '%s\n' "$d" | command grep -c '^[<>]')" -eq 2 ] && printf '%s\n' "$d" | command grep -q '^> frame_settle=0.05$'
+  [ "$(printf '%s\n' "$d" | command grep -c '^[<>]')" -eq 2 ] && command grep -q '^> frame_settle=0.05$' <<< "$d"
 }
 precond "the static-arm declaration is claude.kv with only frame_settle changed (every signature under test is the real one)" _decl_diff_is_settle_only
 
@@ -66,7 +66,7 @@ printf 'family=pty_tmux\ncap=pty\nframe_settle=oops\n' > "$fsd/bad.kv"
 paint() { # file-with-screen-content -> session name
   # NB: runs in command substitution (subshell) — the name must not rely on
   # shared state; nanoseconds make it unique.
-  local s="dwsc-$(date +%s%N)" i=0
+  local s="dwsc-$(plat_now_ns)" i=0
   tmux new-session -d -s "$s" -x 200 -y 50 "cat '$1'; exec sleep 300" || return 1
   # The painter is done when the pane's command has become the `sleep` it
   # exec'd into — a fact tmux reports, so it is polled (≈5ms) rather than
@@ -209,7 +209,7 @@ echo "-- a frames_disagree refusal leaves its two captures on disk --"
 # settle, so the double-capture is guaranteed to disagree — the dump's f1/f2
 # must land under the dir the caller names, capped and best-effort, and the
 # TOKEN on stdout must stay exactly the token the record reads.
-fl="dwsc-flow-$(date +%s%N)"
+fl="dwsc-flow-$(plat_now_ns)"
 tmux new-session -d -s "$fl" -x 200 -y 50 \
   'while :; do printf "tick %s\n" "$(date +%s%N)"; sleep 0.02; done' || { bad "no flowing pane"; }
 dumpd=$(sc_tmpdir)
@@ -278,7 +278,7 @@ cls=$(pty_classify_screen "$DECL" "$s")
 [ "$cls" = "unknown" ] && ok "undeclared state -> unknown (returned, never guessed; ferry parks it)" \
   || bad "undeclared screen classified '$cls' — misclassification is the silent-rot hazard"
 
-s="dwsc-flow-$(date +%s%N)"
+s="dwsc-flow-$(plat_now_ns)"
 tmux new-session -d -s "$s" -x 200 -y 50 \
   'i=0; while :; do echo "output line $i"; i=$((i+1)); sleep 0.1; done' || true
 sleep 0.3
@@ -331,7 +331,7 @@ command grep -q "operator_interference" <<< "$out" \
   || ok "the refusal does not name an operator who is not attached"
 if command -v script > /dev/null; then
   s=$(paint "$scr/typed.txt")
-  ( script -qc "tmux attach -t $s" /dev/null > /dev/null 2>&1 & ) ; sleep 1
+  ( plat_pty_run "tmux attach -t $s" > /dev/null 2>&1 & ) ; sleep 1
   tmux list-clients -t "=$s:" -F '#{client_readonly}' 2>/dev/null | command grep -qx 0 \
     && ok "precondition: a WRITABLE client is attached to the fixture session" \
     || bad "FIXTURE PRECONDITION BROKEN: no writable client attached — the rc-2 case below is vacuous"
@@ -339,9 +339,9 @@ if command -v script > /dev/null; then
   [ $rc -eq 2 ] \
     && ok "occupied composer WITH a writable client -> rc 2 refuse (operator_interference)" \
     || bad "inject with a human attached rc=$rc, want 2"
-  printf '%s' "$out" | command grep -q "operator_interference" \
+  command grep -q "operator_interference" <<< "$out" \
     && ok "refusal names operator_interference" || bad "refusal not self-describing: $out"
-  printf '%s' "$out" | command grep -q "half-typed operator text" \
+  command grep -q "half-typed operator text" <<< "$out" \
     && ok "the screen (with the human's text) is attached to the refusal" \
     || bad "screen not attached to refusal"
   # rc 2 puts the sentence AND the whole frame on stderr. Every caller now
@@ -374,7 +374,7 @@ out=$(pty_inject "$MIN" "$s" "nudge" 2>&1); rc=$?
 # its text matches the real claude.kv signatures, not MOCK_WORKING — so that is
 # what the refusal prints, and that is what gets asserted. The old text said
 # "working screen" and asserted only rc; the class was never checked.
-[ $rc -eq 3 ] && printf '%s' "$out" | command grep -q "unknown" \
+[ $rc -eq 3 ] && command grep -q "unknown" <<< "$out" \
   && ok "no composer_line + a screen matching no declared signature -> rc 3 with the class printed (unknown)" \
   || bad "minimal-declaration inject rc=$rc (want 3) or class not printed: $out"
 
@@ -388,7 +388,7 @@ s=$(paint "$scr/working.txt")
 out=$(pty_inject "$DECL" "$s" "nudge" 2>&1); rc=$?
 [ $rc -eq 3 ] && ok "not-awaiting screen -> rc 3 (caller cold-falls-back / skips)" \
   || bad "inject on working screen rc=$rc, want 3"
-printf '%s' "$out" | command grep -q "working" \
+command grep -q "working" <<< "$out" \
   && ok "the classified state is printed for the caller" || bad "state not printed: $out"
 assert_rc 1 "vanished session -> rc 1 (capture failure)" -- \
   pty_inject "$DECL" "no-such-session" "x"
@@ -484,7 +484,7 @@ if command -v script > /dev/null; then
     done
     return 1
   }
-  ( script -qc "stty rows 24 cols 80; exec tmux attach -r -t \"=$wname\"" /dev/null > /dev/null 2>&1 & )
+  ( plat_pty_run "stty rows 24 cols 80; exec tmux attach -r -t \"=$wname\"" > /dev/null 2>&1 & )
   _wsm_wait_client "$wname" || bad "FIXTURE PRECONDITION BROKEN: no client ever attached to the pinned session"
   sleep 0.5
   cgeom=$(tmux display-message -p -t "=$wname:" '#{window_width}x#{window_height}')
@@ -493,7 +493,7 @@ if command -v script > /dev/null; then
     || bad "geometry moved under an attached client: $cgeom"
   rname="dwsc-wsmctl-$$"
   tmux new-session -d -s "$rname" -x 220 -y 50 "exec sleep 300"
-  ( script -qc "stty rows 24 cols 80; exec tmux attach -r -t \"=$rname\"" /dev/null > /dev/null 2>&1 & )
+  ( plat_pty_run "stty rows 24 cols 80; exec tmux attach -r -t \"=$rname\"" > /dev/null 2>&1 & )
   _wsm_wait_client "$rname" || bad "FIXTURE PRECONDITION BROKEN: no client ever attached to the control session"
   sleep 0.5
   rgeom=$(tmux display-message -p -t "=$rname:" '#{window_width}x#{window_height}')
@@ -523,7 +523,7 @@ mkdir -p "$pkws/.runtime/state"
   printf 'role=author name=%s pane_pid=1 pane_start=1 server_pid=1 server_start=1 socket=%s nonce=n1 mode=cold backend=claude t=1\n' \
     "$pks" "$pksock" | state_set "$pkws" sessions ferry ) > /dev/null
 pkout=$(bash "$RS/launch.sh" peek "$pkws" 2>&1); pkrc=$?
-[ $pkrc -eq 0 ] && printf '%s\n' "$pkout" | command grep -q 'PEEKMARKER the pane says this' \
+[ $pkrc -eq 0 ] && command grep -q 'PEEKMARKER the pane says this' <<< "$pkout" \
   && ok "peek prints the live pane's content (face -> socket -> capture -> stdout)" \
   || bad "rc=$pkrc, the pane text did not come through: $(printf '%s\n' "$pkout" | head -3 | tr '\n' ' ')"
 [ -z "$(tmux list-clients -t "=$pks:" 2>/dev/null)" ] \
@@ -533,7 +533,7 @@ pkout=$(bash "$RS/launch.sh" peek "$pkws" 2>&1); pkrc=$?
 # — the arm 36-verbs cannot hold, because its fixtures have no live tmux; here
 # the has-session check --attach now runs resolves TRUE, so the command prints.
 pkout=$(bash "$RS/launch.sh" peek "$pkws" --attach 2>&1); pkrc=$?
-[ $pkrc -eq 0 ] && printf '%s\n' "$pkout" | command grep -qF "tmux -S $pksock attach -r -t '=$pks'   (author)" \
+[ $pkrc -eq 0 ] && command grep -qF "tmux -S $pksock attach -r -t '=$pks'   (author)" <<< "$pkout" \
   && ok "--attach over a LIVE session prints the read-only attach command, exactly (socket, exact-match target, role)" \
   || bad "--attach over a live session: $(printf '%s\n' "$pkout" | head -3 | tr '\n' ' ')"
 tmux kill-session -t "=$pks" 2>/dev/null
@@ -542,7 +542,7 @@ echo "-- teardown: fail-closed --"
 out=$(pty_teardown "somename" "$scr/no-such-socket" 2>&1); rc=$?
 [ $rc -eq 3 ] && ok "gone socket -> rc 3 refuse (never starts a replacement server)" \
   || bad "teardown on gone socket rc=$rc, want 3"
-printf '%s' "$out" | command grep -q "fail-closed" \
+command grep -q "fail-closed" <<< "$out" \
   && ok "refusal names the fail-closed rule" || bad "teardown refusal not self-describing"
 s=$(paint "$scr/clean.txt")
 sock=$(tmux display-message -p -t "=$s:" '#{socket_path}')

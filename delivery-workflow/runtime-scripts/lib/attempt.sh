@@ -76,7 +76,7 @@ run_attempt() {
   local dm
   dm=$(decide_mode "$role" "$decl")
   mode=${dm%% *}; tplmode=${dm##* }
-  nonce=$(printf '%s.%s.%s' "$(date +%s%N)" $$ "$RANDOM" | md5sum | cut -c1-16)
+  nonce=$(printf '%s.%s.%s' "$(plat_now_ns)" $$ "$RANDOM" | md5sum | cut -c1-16)
   prompt="$WS/.runtime/prompts/$G_SLICE-$G_STAGE-r$G_ROUND-a$((G_ATTEMPT + 1)).md"
   local out
   out=$(compose_prompt "$WS" "$G_STAGE" "$G_SLICE" "$G_ROUND" $((G_ATTEMPT + 1)) "$nonce" "$tplmode" "$prompt") \

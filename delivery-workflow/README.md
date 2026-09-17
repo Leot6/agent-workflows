@@ -15,8 +15,8 @@ context); the workflow ships no project assumptions.
 - **Design**: settled — `design/` (6 documents, owner-reviewed). The design documents are
   the sole authority; superseded working material lives in `discussion/` (deletable,
   untracked).
-- **Implementation**: complete and self-tested — `self-check/check.sh` (46 checks +
-  drills) is the acceptance instrument; everything it pins is in the tree, and every
+- **Implementation**: complete and self-tested on Linux and macOS — `self-check/check.sh`
+  (checks + drills; its summary line is the current count) is the acceptance instrument; everything it pins is in the tree, and every
   tool it needs but a machine lacks SKIPs by name.
 
 | design doc | settles |
@@ -35,7 +35,7 @@ context); the workflow ships no project assumptions.
 | `design/` | settled design of the workflow itself (long-lived) |
 | `discussion/` | ALL informal material — deletable as a unit, gitignored, never referenced by finalized docs |
 | `runtime-docs/` | read by agents at run time: `cards/` (hot role cards) + protocol (the flow) / review-standards (contracts & checklists) / operations (the operator playbook) / maintenance (changing this tree) / commit-messages (what a subject may say) + `templates/` |
-| `runtime-scripts/` | machine-run: `launch.sh` (the one operator entry) · `ferry.sh` `watchdog.sh` `monitor.sh` `probe.sh` (driver) · `derive_report.sh` `derive_cost.sh` (read-only derivations) · `session/` (hook-invoked inside agent sessions) · `lib/` (sourced) · `backends/` (pty adapter) · `transports/` (notify adapters) |
+| `runtime-scripts/` | machine-run: `launch.sh` (the one operator entry) · `ferry.sh` `watchdog.sh` `monitor.sh` `probe.sh` (driver) · `derive_report.sh` `derive_cost.sh` (read-only derivations) · `session/` (hook-invoked inside agent sessions) · `lib/` (sourced; `platform.sh` holds every Linux/macOS difference) · `backends/` (pty adapter) · `transports/` (notify adapters) |
 | `config/` | declarations, read-only at run time: `defaults.kv` `schema.kv` `stages.tsv` `notify-presets.kv` · `backends/*.kv` · `profiles/` |
 | `self-check/` | workflow-functional regression (dev-time, non-runtime) |
 | `iteration-log/` | the learning loop's durable home: one file per mechanism under `entries/`, `INDEX.md` generated, `NOTES.md` narrative — read by review-standards §14, maintenance §1 and the close-out card |
@@ -62,10 +62,17 @@ prose.
 
 ## Prerequisites (a fresh machine)
 
-Linux (liveness reads procfs) · bash ≥ 4.3 (`wait -n`, the self-check
-runner's parallel job control — the runtime itself needs ≥ 4 for `mapfile`) ·
-git · GNU coreutils (`stat` `date` `timeout`) · tmux ≥ 2.9 · `flock`
-(util-linux) · awk/sed/grep. Then, in order:
+Linux or macOS — the host differences live in one file,
+`runtime-scripts/lib/platform.sh` (`runtime-docs/operations.md` §9).
+
+| | Linux (Ubuntu/Debian) | macOS |
+|---|---|---|
+| bash ≥ 4.3 (`mapfile`; the self-check runner's `wait -n`) | system bash | `brew install bash` — ahead of `/bin` in `PATH` |
+| tmux ≥ 2.9 | `apt install tmux` | `brew install tmux` |
+| git · perl · awk/sed/grep | base system | base system |
+| `flock` · `timeout` · `md5sum` · `setsid` | util-linux + coreutils (base system) | nothing to install — `lib/darwin-bin/` stands in for all four |
+
+Then, in order:
 
 1. **A CLI agent installed and authenticated.** The shipped declarations are
    `claude`, `codex` (`config/backends/`); at least one must be on PATH.

@@ -42,7 +42,7 @@ state_get "$ws" slices | command grep "id=02" | command grep -q "status=done" \
 chain=$(state_get "$ws" ledger 2>/dev/null \
   | command grep -oE 'event=advance slice=[0-9]+ stage=[a-z-]+' \
   | awk '{print $3}' | cut -d= -f2 | paste -sd, -)
-printf '%s' "$chain" | command grep -q "turnover,split-check,split,split-check,spec" \
+command grep -q "turnover,split-check,split,split-check,spec" <<< "$chain" \
   && ok "advance chain walks the re-slice detour: …turnover(reslice) -> split-check(flag) -> split(apply) -> split-check(concur) -> spec…" \
   || bad "advance chain '$chain' lacks the re-slice detour"
 scen_end

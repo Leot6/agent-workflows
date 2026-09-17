@@ -34,18 +34,18 @@ pk=$(mk_ws "$base" peektopic "$repo" "$branch")
     | state_set "$pk" sessions ferry ) > /dev/null
 corrupt_surface "$pk" sessions
 out=$("$LAUNCH" peek "$pk" 2>&1); rc=$?
-[ $rc -ne 0 ] && printf '%s\n' "$out" | command grep -q 'CORRUPT' \
+[ $rc -ne 0 ] && command grep -q 'CORRUPT' <<< "$out" \
   && ok "peek over a CORRUPT sessions surface refuses as corrupt (rc=$rc)" \
   || bad "rc=$rc over a corrupt sessions surface: $out"
 pk2=$(mk_ws "$base" peeknever "$repo" "$branch")
 out=$("$LAUNCH" peek "$pk2" 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'topic has never started' \
+[ $rc -eq 0 ] && command grep -q 'topic has never started' <<< "$out" \
   && ok "peek on a never-started topic says so (absent, not a fault)" \
   || bad "rc=$rc on a never-started topic: $out"
 pk3=$(mk_ws "$base" peekempty "$repo" "$branch")
 ( . "$RS/lib/state.sh"; state_set "$pk3" sessions ferry < /dev/null ) > /dev/null
 out=$("$LAUNCH" peek "$pk3" 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'surface is EMPTY — sessions were cleared at close-out' \
+[ $rc -eq 0 ] && command grep -q 'surface is EMPTY — sessions were cleared at close-out' <<< "$out" \
   && ok "peek over a present-but-EMPTY surface says sessions were cleared at close-out (empty != absent)" \
   || bad "rc=$rc over an empty sessions surface: $out"
 pk4=$(mk_ws "$base" peekgone "$repo" "$branch")
@@ -55,13 +55,13 @@ pk4=$(mk_ws "$base" peekgone "$repo" "$branch")
 mkdir -p "$pk4/.runtime/logs"
 printf 'stale pane text\n' > "$pk4/.runtime/logs/01-spec.log"
 out=$("$LAUNCH" peek "$pk4" 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'logs/01-spec.log' \
+[ $rc -eq 0 ] && command grep -q 'logs/01-spec.log' <<< "$out" \
   && ok "a row whose session is GONE points at the pane log it left (name minus the delivery-<topic>- prefix)" \
   || bad "a gone session did not point at its pane log: $out"
 out=$("$LAUNCH" peek "$pk4" --attach 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'session is gone' \
-  && printf '%s\n' "$out" | command grep -q 'logs/01-spec.log' \
-  && ! printf '%s\n' "$out" | command grep -q 'attach -r' \
+[ $rc -eq 0 ] && command grep -q 'session is gone' <<< "$out" \
+  && command grep -q 'logs/01-spec.log' <<< "$out" \
+  && ! command grep -q 'attach -r' <<< "$out" \
   && ok "--attach over a GONE session points at the pane log, never the dead socket's command (an unrunnable line is worse than nothing — same rule as pending)" \
   || bad "--attach printed something runnable or nothing over a gone session: $out"
 # A pending socket owes a statement, not a command — the monitor's own rule for
@@ -72,16 +72,16 @@ pk5=$(mk_ws "$base" peekpending "$repo" "$branch")
   printf 'role=author name=delivery-peekpending-01-spec pane_pid=1 pane_start=1 server_pid=1 server_start=1 socket=pending nonce=n1 mode=cold backend=claude t=1\n' \
     | state_set "$pk5" sessions ferry ) > /dev/null
 out=$("$LAUNCH" peek "$pk5" --attach 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'still starting' \
-  && ! printf '%s\n' "$out" | command grep -q 'attach -r' \
+[ $rc -eq 0 ] && command grep -q 'still starting' <<< "$out" \
+  && ! command grep -q 'attach -r' <<< "$out" \
   && ok "--attach over a PENDING socket says 'still starting' and prints NO command (never an unrunnable line)" \
   || bad "--attach printed something runnable or nothing over a pending socket: $out"
 out=$(timeout 3 "$LAUNCH" peek "$pk5" --follow 2>&1 || true)
-printf '%s\n' "$out" | command grep -q 'still starting' \
+command grep -q 'still starting' <<< "$out" \
   && ok "--follow renders the pending session's statement too (the roster path is shared)" \
   || bad "--follow over a pending session: $(printf '%s\n' "$out" | tail -2 | tr '\n' ' ')"
 out=$(timeout 3 "$LAUNCH" peek "$pk2" --follow 2>&1 || true)
-printf '%s\n' "$out" | command grep -q 'never started' \
+command grep -q 'never started' <<< "$out" \
   && ok "--follow on an absent surface SAYS so every tick (watching for the topic to come up), never a silent blank" \
   || bad "--follow over an absent surface went silent: $(printf '%s\n' "$out" | tail -1)"
 # A role filter with nothing to show SAYS so and names what the surface holds —
@@ -90,13 +90,13 @@ printf '%s\n' "$out" | command grep -q 'never started' \
 # is a sub-agent inside the author's pane: no sessions row will ever carry it
 # (the surface is keyed by owed-stage role), so it answers where it lives.
 out=$("$LAUNCH" peek "$pk4" reviewer 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'no reviewer session' \
-  && printf '%s\n' "$out" | command grep -q 'holds: author' \
+[ $rc -eq 0 ] && command grep -q 'no reviewer session' <<< "$out" \
+  && command grep -q 'holds: author' <<< "$out" \
   && ok "a filter that matches nothing SAYS so and names what the surface holds (not silence)" \
   || bad "filtered-to-nothing peek: rc=$rc out='$out'"
 out=$("$LAUNCH" peek "$pk4" implementer 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'sub-agent' \
-  && printf '%s\n' "$out" | command grep -q 'peek .*author' \
+[ $rc -eq 0 ] && command grep -q 'sub-agent' <<< "$out" \
+  && command grep -q 'peek .*author' <<< "$out" \
   && ok "peek implementer explains itself (sub-agent inside the author pane — never a sessions row) instead of an empty screen" \
   || bad "peek implementer: rc=$rc out='$out'"
 # The explanation is CONDITIONAL on the surface really holding no implementer
@@ -108,8 +108,8 @@ pk7=$(mk_ws "$base" peekimplrow "$repo" "$branch")
   printf 'role=implementer name=delivery-peekimplrow-01-impl pane_pid=1 pane_start=1 server_pid=1 server_start=1 socket=/nonexistent/i nonce=n7 mode=cold backend=claude t=1\n' \
     | state_set "$pk7" sessions ferry ) > /dev/null
 out=$("$LAUNCH" peek "$pk7" implementer 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'implementer · delivery-peekimplrow-01-impl' \
-  && ! printf '%s\n' "$out" | command grep -q 'sub-agent' \
+[ $rc -eq 0 ] && command grep -q 'implementer · delivery-peekimplrow-01-impl' <<< "$out" \
+  && ! command grep -q 'sub-agent' <<< "$out" \
   && ok "a surface that HAS an implementer row shows it — the explanation yields to real data, never hides it" \
   || bad "peek implementer over a surface holding the row: rc=$rc out='$out'"
 # …and a row whose role merely STARTS WITH the asked one is named, never
@@ -128,8 +128,8 @@ pk8=$(mk_ws "$base" peeksubrow "$repo" "$branch")
   printf 'role=implementer_sub name=delivery-peeksubrow-01-impl pane_pid=1 pane_start=1 server_pid=1 server_start=1 socket=/nonexistent/i nonce=n8 mode=cold backend=claude t=1\n' \
     | state_set "$pk8" sessions ferry ) > /dev/null
 out=$("$LAUNCH" peek "$pk8" implementer 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'the surface holds: implementer_sub' \
-  && ! printf '%s\n' "$out" | command grep -q 'sub-agent' \
+[ $rc -eq 0 ] && command grep -q 'the surface holds: implementer_sub' <<< "$out" \
+  && ! command grep -q 'sub-agent' <<< "$out" \
   && ok "a role that merely STARTS WITH the asked one is NAMED honestly, not explained away (the guard's prefix must stay wider than the filter's anchor)" \
   || bad "peek implementer over a surface holding only implementer_sub: rc=$rc out='$out'"
 assert_rc 2 "peek with TWO roles refuses, naming both" -- "$LAUNCH" peek "$pk4" author reviewer
@@ -155,7 +155,7 @@ for shape in "plain" "author" "--attach"; do
   if [ "$shape" = "plain" ]; then out=$("$LAUNCH" peek "$pk6" 2>&1)
   else out=$("$LAUNCH" peek "$pk6" $shape 2>&1); fi
   rc=$?
-  [ $rc -eq 0 ] && [ -n "$out" ] && printf '%s\n' "$out" | command grep -q 'no name=' \
+  [ $rc -eq 0 ] && [ -n "$out" ] && command grep -q 'no name=' <<< "$out" \
     && ok "peek ($shape) over a NAMELESS row says so — never a silent rc=0" \
     || bad "peek ($shape) went silent or wrong: rc=$rc out='$out'"
 done
@@ -168,8 +168,8 @@ done
   printf 'role=reviewer name=delivery-peekgone-01-precheck pane_pid=1 pane_start=1 server_pid=1 server_start=1 socket=/nonexistent/x nonce=n2 mode=cold backend=claude t=1\nrole=author pane_pid=9\n' \
     | state_set "$pk4" sessions ferry ) > /dev/null
 out=$("$LAUNCH" peek "$pk4" author 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'no name=' \
-  && printf '%s\n' "$out" | command grep -q 'nothing was shown' \
+[ $rc -eq 0 ] && command grep -q 'no name=' <<< "$out" \
+  && command grep -q 'nothing was shown' <<< "$out" \
   && ok "a filtered peek whose only match is nameless says BOTH: the nameless row AND 'nothing was shown' (the zero-shown half of the belt)" \
   || bad "the zero-shown path: rc=$rc out='$out'"
 # and the skipped count follows the FILTER: a nameless row of a role the
@@ -178,12 +178,12 @@ out=$("$LAUNCH" peek "$pk4" reviewer 2>&1); rc=$?
 # ! grep -q, not grep -qv: -qv passed while the leak WAS present (other lines
 # simply lacked the phrase) — the same vacuity shape F1 pinned, caught here by
 # re-running this arm own mutation.
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q '──── reviewer' \
-  && ! printf '%s\n' "$out" | command grep -q 'no name=' \
+[ $rc -eq 0 ] && command grep -q '──── reviewer' <<< "$out" \
+  && ! command grep -q 'no name=' <<< "$out" \
   && ok "the nameless count follows the filter (peek reviewer does not report the unrelated nameless author row)" \
   || bad "unfiltered skip count leaked into a filtered peek: $out"
 out=$(timeout 3 "$LAUNCH" peek "$pk5" reviewer --follow 2>&1 || true)
-printf '%s\n' "$out" | command grep -q 'no reviewer session' \
+command grep -q 'no reviewer session' <<< "$out" \
   && ok "--follow with a filter that matches nothing SAYS so on every tick (the follow path shares the no-match branch)" \
   || bad "--follow filtered-to-nothing went silent: $(printf '%s\n' "$out" | tail -1)"
 
@@ -205,19 +205,19 @@ rt=$(( $(date +%s) - 7200 ))
   state_append "$rws" ledger ferry "v=1 t=$((rt + 1200)) event=advance slice=01 stage=spec verdict=drafted target=precheck"
   state_append "$rws" ledger ferry "v=1 t=$((rt + 1201)) event=enter slice=01 stage=precheck round=1" ) > /dev/null
 out=$("$LAUNCH" status "$rws" --rounds 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'slice 00 · split' \
+[ $rc -eq 0 ] && command grep -q 'slice 00 · split' <<< "$out" \
   && ok "status --rounds renders (rc=0), grouped by slice · stage" \
   || bad "rc=$rc: $(printf '%s\n' "$out" | head -3 | tr '\n' ' ')"
-printf '%s\n' "$out" | command grep -qE 'r1 +[0-9-]+ [0-9:]+ +10m +done -> split-check' \
+command grep -qE 'r1 +[0-9-]+ [0-9:]+ +10m +done -> split-check' <<< "$out" \
   && ok "a closed round shows its wall (enter t -> advance t = 10m) and its verdict -> target" \
   || bad "the closed round's row: $(printf '%s\n' "$out" | command grep 'split' | head -2 | tr '\n' ' ')"
-printf '%s\n' "$out" | command grep -qE 'parked 1x testpark 5m' \
+command grep -qE 'parked 1x testpark 5m' <<< "$out" \
   && ok "a park inside a round is annotated with its reason and its gap (park t -> next event for the stage = 5m)" \
   || bad "the park annotation: $(printf '%s\n' "$out" | command grep -E 'spec|parked' | head -2 | tr '\n' ' ')"
-printf '%s\n' "$out" | command grep -qE 'RUNNING' \
+command grep -qE 'RUNNING' <<< "$out" \
   && ok "a round with enter and no advance renders RUNNING (the live round), not a fabricated verdict" \
   || bad "no RUNNING row for the open round: $(printf '%s\n' "$out" | tail -3 | tr '\n' ' ')"
-printf '%s\n' "$out" | command grep -qE '= wall 10m, of which parked 0s' \
+command grep -qE '= wall 10m, of which parked 0s' <<< "$out" \
   && ok "the stage subtotal separates wall from parked (a parked stage reads as parked, not as slow)" \
   || bad "the subtotal line: $(printf '%s\n' "$out" | command grep '= wall' | head -2 | tr '\n' ' ')"
 # A park still open at EOF is the reader's most important case — the topic is
@@ -230,10 +230,10 @@ pt=$(( $(date +%s) - 3600 ))
   state_append "$rws3" ledger ferry "v=1 t=$pt event=enter slice=01 stage=precheck round=1"
   state_append "$rws3" ledger ferry "v=1 t=$((pt + 300)) event=park reason=class_u slice=01 stage=precheck detail=fixture" ) > /dev/null
 out=$("$LAUNCH" status "$rws3" --rounds 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'PARKED class_u' \
+[ $rc -eq 0 ] && command grep -q 'PARKED class_u' <<< "$out" \
   && ok "a round parked RIGHT NOW says PARKED <reason>, not RUNNING" \
   || bad "the parked round's verdict: $(printf '%s\n' "$out" | command grep 'r1' | head -1)"
-printf '%s\n' "$out" | command grep -qE 'of which parked 5[0-9]m' \
+command grep -qE 'of which parked 5[0-9]m' <<< "$out" \
   && ok "and the ONGOING park gap counts as parked (enter+300s park held to now ≈ 55m of a 60m wall)" \
   || bad "the ongoing park gap: $(printf '%s\n' "$out" | command grep '= wall' | head -1)"
 # Two closing-rule shapes the first fixture does not reach: a WARM resume does
@@ -253,10 +253,10 @@ wt=$(( $(date +%s) - 7200 ))
   state_append "$rws4" ledger ferry "v=1 t=$((wt + 2400)) event=ferry_start pid=100"
   state_append "$rws4" ledger ferry "v=1 t=$((wt + 2500)) event=enter slice=01 stage=precheck round=1" ) > /dev/null
 out=$("$LAUNCH" status "$rws4" --rounds 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -qE 'parked 1x operator_stop 5m' \
+[ $rc -eq 0 ] && command grep -qE 'parked 1x operator_stop 5m' <<< "$out" \
   && ok "a WARM-resume park closes at the first ferry_start (5m), not at the resumed work's record (would read 29m of work as park)" \
   || bad "the warm-resume park gap: $(printf '%s\n' "$out" | command grep 'r1' | head -1)"
-printf '%s\n' "$out" | command grep -qE 'park\(s\) outside any round \(workflow_changed\) — 9m' \
+command grep -qE 'park\(s\) outside any round \(workflow_changed\) — 9m' <<< "$out" \
   && ok "a park whose row carries no stage is REPORTED in the tail line with its reason and gap (9m), never dropped" \
   || bad "the stage-less tail line: $(printf '%s\n' "$out" | command grep 'outside any round')"
 # A park arriving while another is still open (measured on a real ledger:
@@ -275,10 +275,10 @@ st5=$(( $(date +%s) - 7200 ))
   state_append "$rws5" ledger ferry "v=1 t=$((st5 + 470)) event=enter slice=01 stage=spec round=2"
   state_append "$rws5" ledger ferry "v=1 t=$((st5 + 600)) event=advance slice=01 stage=spec verdict=drafted target=precheck" ) > /dev/null
 out=$("$LAUNCH" status "$rws5" --rounds 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -qE 'r1 .* parked 1x operator_stop 5m' \
+[ $rc -eq 0 ] && command grep -qE 'r1 .* parked 1x operator_stop 5m' <<< "$out" \
   && ok "a park SUPERSEDED by a later park closes at that park's t (5m), not at the later ferry_start (6m40s)" \
   || bad "the superseded park's gap: $(printf '%s\n' "$out" | command grep 'r1' | head -1)"
-printf '%s\n' "$out" | command grep -qE 'park\(s\) outside any round \(workflow_changed\) — 1m' \
+command grep -qE 'park\(s\) outside any round \(workflow_changed\) — 1m' <<< "$out" \
   && ok "the superseding stage-less park itself registers (1m40s renders 1m) — not lost behind the occupied slot" \
   || bad "the superseding stage-less park: $(printf '%s\n' "$out" | command grep 'outside any round')"
 # An out-of-round park does NOT close at a bare record: a foreign slice's
@@ -296,7 +296,7 @@ e6=$(( $(date +%s) - 7200 ))
   state_append "$rws6" ledger ferry "v=1 t=$((e6 + 210)) event=record slice=09 stage=spec nonce=z"
   state_append "$rws6" ledger ferry "v=1 t=$((e6 + 840)) event=ferry_start pid=7" ) > /dev/null
 out=$("$LAUNCH" status "$rws6" --rounds 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -qE 'outside any round \(workflow_changed\) — 10m' \
+[ $rc -eq 0 ] && command grep -qE 'outside any round \(workflow_changed\) — 10m' <<< "$out" \
   && ok "an out-of-round park closes at the ferry_start (10m40s renders 10m), NOT at a foreign record 10s after it" \
   || bad "the early-close gap: $(printf '%s\n' "$out" | command grep 'outside any round')"
 rws7=$(mk_ws "$base" roundsorphan "$repo" "$branch")
@@ -305,7 +305,7 @@ o7=$(( $(date +%s) - 3600 ))
   state_append "$rws7" ledger ferry "v=1 t=$o7 event=spawn slice=03 stage=impl round=1 attempt=1 mode=cold session=s backend=claude model=m effort=low"
   state_append "$rws7" ledger ferry "v=1 t=$o7 event=park reason=operator_stop slice=03 stage=impl detail=fixture" ) > /dev/null
 out=$("$LAUNCH" status "$rws7" --rounds 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -qE 'outside any round \(03·impl operator_stop\) — [0-9]+[hm]' \
+[ $rc -eq 0 ] && command grep -qE 'outside any round \(03·impl operator_stop\) — [0-9]+[hm]' <<< "$out" \
   && ok "an orphan KEYED park (no round open for its stage) rides the tail line NAMED with its stage — never dropped behind a 0-round header" \
   || bad "the orphan park: $(printf '%s\n' "$out" | command grep 'outside any round')"
 # A round superseded by a later enter of the same stage (no advance between)
@@ -322,17 +322,17 @@ s8=$(( $(date +%s) - 7200 ))
   state_append "$rws8" ledger ferry "v=1 t=$((s8 + 910)) event=enter slice=02 stage=spec round=1"
   state_append "$rws8" ledger ferry "v=1 t=$((s8 + 1800)) event=complete topic=fixture" ) > /dev/null
 out=$("$LAUNCH" status "$rws8" --rounds 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q '(superseded)' \
+[ $rc -eq 0 ] && command grep -q '(superseded)' <<< "$out" \
   && ok "a round superseded by a later enter of the same stage is MARKED (superseded), not silently reshaped" \
   || bad "no superseded marker: $(printf '%s\n' "$out" | command grep 'r1' | head -1)"
-printf '%s\n' "$out" | command grep -qE 'r1 +[0-9-]+ [0-9:]+ +14m +OPEN' \
+command grep -qE 'r1 +[0-9-]+ [0-9:]+ +14m +OPEN' <<< "$out" \
   && ok "an open round behind the frontier on a COMPLETED ledger says OPEN and freezes at the completion row (enter 910 -> complete 1800 = 890s = 14m, not now-based)" \
   || bad "the frozen OPEN round: $(printf '%s\n' "$out" | command grep 'slice 02' -A1)"
 # ! grep -q, NEVER grep -qv here: -qv asks "does ANY line lack RUNNING" — the
 # vacuous form passed while slice 02 rendered RUNNING on a completed ledger,
 # because some OTHER line (a subtotal, another round) lacked the word. This
 # arm's own mutation is what proved it empty.
-! printf '%s\n' "$out" | command grep -q 'RUNNING' \
+! command grep -q 'RUNNING' <<< "$out" \
   && ok "a completed ledger renders no round as RUNNING (liveness is not the ledger claim to make about a finished topic)" \
   || bad "a RUNNING verdict on a completed ledger: $(printf '%s\n' "$out" | command grep RUNNING)"
 # An out-of-round park whose next closing event is an ENTER (not a park, not a
@@ -349,7 +349,7 @@ n9=$(( $(date +%s) - 7200 ))
   state_append "$rws9" ledger ferry "v=1 t=$((n9 + 500)) event=enter slice=01 stage=precheck round=1"
   state_append "$rws9" ledger ferry "v=1 t=$((n9 + 900)) event=advance slice=01 stage=precheck verdict=ready target=impl" ) > /dev/null
 out=$("$LAUNCH" status "$rws9" --rounds 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -qE 'outside any round \(workflow_changed\) — 5m' \
+[ $rc -eq 0 ] && command grep -qE 'outside any round \(workflow_changed\) — 5m' <<< "$out" \
   && ok "an out-of-round park closes at the next ENTER (5m) — the one shape that pins the enter closer (dropping it reads ~1h50m to EOF)" \
   || bad "the enter-closed gap: $(printf '%s\n' "$out" | command grep 'outside any round')"
 # A different stage's ENTER does not close THIS stage's in-round park: the
@@ -403,7 +403,7 @@ s15=$(( $(date +%s) - 900 ))
   state_append "$rws15" ledger ferry "v=1 t=$((s15 + 400)) event=record slice=01 stage=spec nonce=stale" ) > /dev/null
 out=$("$LAUNCH" status "$rws15" --rounds 2>&1); rc=$?
 [ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -A1 'slice 01 · impl' | command grep -q 'OPEN' \
-  && ! printf '%s\n' "$out" | command grep -q 'RUNNING' \
+  && ! command grep -q 'RUNNING' <<< "$out" \
   && ok "a stale keyed record for a CLOSED stage clears the frontier — the live round reads OPEN, not RUNNING (the ledger's last event is not its work)" \
   || bad "a stray keyed event did not demote the open round: $(printf '%s\n' "$out" | command grep -A1 'impl' | tr '\n' ' ')"
 # And the attribution half of the same rule: a keyed event WITH an open round
@@ -436,8 +436,8 @@ s18=$(( $(date +%s) - 7200 ))
   state_append "$rws18" ledger ferry "v=1 t=$((s18 + 4800)) event=park reason=workflow_changed slice= stage= detail=fixture" ) > /dev/null
 out=$("$LAUNCH" status "$rws18" --rounds 2>&1); rc=$?
 [ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -A1 'slice 02 · turnover' | command grep -q 'OPEN' \
-  && ! printf '%s\n' "$out" | command grep -q 'RUNNING' \
-  && printf '%s\n' "$out" | command grep -q 'outside any round (workflow_changed)' \
+  && ! command grep -q 'RUNNING' <<< "$out" \
+  && command grep -q 'outside any round (workflow_changed)' <<< "$out" \
   && ok "a ledger ending in a KEYLESS park renders the open round OPEN, not RUNNING — the park is a halt; the ferry has exited (the adoption-door shape)" \
   || bad "the keyless-park ending: $(printf '%s\n' "$out" | grep -A1 turnover | tr '\n' ' ')"
 # THE PAIRING of the halt and its answer: a keyless park suspends the
@@ -492,7 +492,7 @@ out=$("$LAUNCH" status "$rws21" --rounds 2>&1); rc=$?
 nrun21=$(printf '%s\n' "$out" | command grep -c 'RUNNING')
 [ $rc -eq 0 ] && [ "$nrun21" -eq 1 ] \
   && printf '%s\n' "$out" | command grep -E 'r2.*RUNNING' | command grep -q . \
-  && printf '%s\n' "$out" | command grep -qE 'r1.*\(superseded\)' \
+  && command grep -qE 'r1.*\(superseded\)' <<< "$out" \
   && ok "the enter between the pair and its ferry_start retires the suspension — the NEW round is the frontier; the superseded one is not resurrected" \
   || bad "the enter-retire shape: $nrun21 RUNNING round(s): $(printf '%s\n' "$out" | grep -A2 spec | tr '\n' ' ')"
 # A duplicate (slice, stage, round) enter must not double-list the round or
@@ -509,9 +509,9 @@ s22=$(( $(date +%s) - 86400 ))
   state_append "$rws22" ledger ferry "v=1 t=$s22 event=enter slice=02 stage=impl round=1" ) > /dev/null
 out=$("$LAUNCH" status "$rws22" --rounds 2>&1); rc=$?
 n_r1=$(printf '%s\n' "$out" | command grep -c 'r1 ')
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'slice 02 · impl — 1 round(s)' \
+[ $rc -eq 0 ] && command grep -q 'slice 02 · impl — 1 round(s)' <<< "$out" \
   && [ "$n_r1" -eq 1 ] \
-  && printf '%s\n' "$out" | command grep -qE '= wall (23h[0-9]*m|1d0h), of which parked 0s' \
+  && command grep -qE '= wall (23h[0-9]*m|1d0h), of which parked 0s' <<< "$out" \
   && ok "a duplicate (slice,stage,round) enter lists the round ONCE and counts the wall once — the subtotal is not doubled by a hand-repaired surface" \
   || bad "the duplicate-enter shape ($n_r1 r1 rows): $(printf '%s\n' "$out" | grep -A3 impl | tr '\n' ' ')"
 # The enter branch retires a suspension — the fourth component of the pairing,
@@ -533,7 +533,7 @@ s23=$(( $(date +%s) - 3600 ))
   state_append "$rws23" ledger ferry "v=1 t=$((s23 + 600)) event=ferry_start pid=1 role=author session=s" ) > /dev/null
 out=$("$LAUNCH" status "$rws23" --rounds 2>&1); rc=$?
 [ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -A1 'slice 01 · impl' | command grep -q 'OPEN' \
-  && ! printf '%s\n' "$out" | command grep -q 'RUNNING' \
+  && ! command grep -q 'RUNNING' <<< "$out" \
   && ok "the enter retires the suspension — the round the newer enter superseded renders OPEN after the stale-record clear and the ferry_start, never resurrected as RUNNING" \
   || bad "the retire shape: $(printf '%s\n' "$out" | grep -A1 'slice 01 · impl' | tr '\n' ' ')"
 # A keyless park arriving over an OPEN IN-ROUND park suspends THAT round, not
@@ -572,8 +572,8 @@ s25=$(( $(date +%s) - 3600 ))
   state_append "$rws25" ledger ferry "v=2 t_ms=1788761000000 event=advance slice=01 stage=spec verdict=drafted target=precheck"
   state_append "$rws25" ledger ferry "v=1 t=BAD event=park reason=operator_stop slice=01 stage=spec detail=fixture" ) > /dev/null
 out=$("$LAUNCH" status "$rws25" --rounds 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q '2 row(s) on the ledger carry no parseable event=/t=' \
-  && printf '%s\n' "$out" | command grep -q 'not counted in any wall' \
+[ $rc -eq 0 ] && command grep -q '2 row(s) on the ledger carry no parseable event=/t=' <<< "$out" \
+  && command grep -q 'not counted in any wall' <<< "$out" \
   && ok "rows the parser cannot read are counted and SAID — never silently dropped over rc=0 (the unreadable advance and park would have read as a live RUNNING round)" \
   || bad "the dropped-row count: $(printf '%s\n' "$out" | tail -2 | tr '\n' ' ')"
 # A \037 byte inside a field value must not shift the render: the awk-to-shell
@@ -591,10 +591,10 @@ us=$'\037'
   state_append "$rws26" ledger ferry "v=1 t=$((s26 + 120)) event=park reason=blo${us}cked slice=01 stage=spec detail=fixture"
   state_append "$rws26" ledger ferry "v=1 t=$((s26 + 7080)) event=ferry_start pid=1 role=author session=s" ) > /dev/null
 out=$("$LAUNCH" status "$rws26" --rounds 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'RUNNING · parked 1x blocked 1h56m' \
-  && ! printf '%s\n' "$out" | command grep -qP '\x1f' \
+[ $rc -eq 0 ] && command grep -q 'RUNNING · parked 1x blocked 1h56m' <<< "$out" \
+  && ! command grep -qF "$(printf '\037')" <<< "$out" \
   && ok "a unit separator inside a field value is sanitized at kv() — the reason renders whole (blocked), the columns hold, and no separator byte reaches the output" \
-  || bad "the unit-separator shape: $(printf '%s\n' "$out" | grep 'r1 ' | cat -A | tr '\n' ' ')"
+  || bad "the unit-separator shape: $(printf '%s\n' "$out" | grep 'r1 ' | cat -vet | tr '\n' ' ')"
 # The one interaction cell of the pairing matrix no round had driven: a
 # TEARDOWN (or any other keyless bookkeeping row) between the keyless park
 # and its answering ferry_start. Hand-computed before running: teardown is
@@ -612,7 +612,7 @@ s27=$(( $(date +%s) - 7200 ))
   state_append "$rws27" ledger ferry "v=1 t=$((s27 + 3600)) event=ferry_start pid=1 role=author session=s" ) > /dev/null
 out=$("$LAUNCH" status "$rws27" --rounds 2>&1); rc=$?
 [ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -A1 'slice 01 · spec' | command grep -q 'RUNNING' \
-  && printf '%s\n' "$out" | command grep -q 'outside any round (workflow_changed) — 5[0-9]m' \
+  && command grep -q 'outside any round (workflow_changed) — 5[0-9]m' <<< "$out" \
   && ok "a teardown between the keyless park and its ferry_start changes neither half — the halt is not discharged (gap books park->ferry_start, ~58m) and the restore still fires (RUNNING)" \
   || bad "the teardown-mid pairing cell: $(printf '%s\n' "$out" | grep -E 'r1 |outside' | tr '\n' ' ')"
 # The restore GUARD: when a keyed row of another open round claims the frontier
@@ -658,7 +658,7 @@ pb29=$(mktemp "${TMPDIR:-/tmp}/dwsc-36vp.XXXXXX")
   done
 } > "$pb29"
 ( . "$RS/lib/state.sh"; state_set "$rws29" ledger ferry < "$pb29" ) > /dev/null
-nrows=$(wc -l < "$pb29")
+nrows=$(( $(wc -l < "$pb29") ))
 out=$("$LAUNCH" status "$rws29" --rounds 2>&1); rc=$?
 # The arm's OWN assertions use here-strings for the same reason: the output
 # here is ~290KB, and `printf | grep -q` over it would race the same SIGPIPE
@@ -683,10 +683,10 @@ s30=$(( $(date +%s) - 7200 ))
   printf 'v=1 t=%s event=rotated cap=8000 rotated_to=ledger.1700000000.rot\nv=1 t=%s event=enter slice=05 stage=spec round=1\nv=1 t=%s event=advance slice=05 stage=spec verdict=done target=impl\n' \
     "$s30" "$((s30 + 60))" "$((s30 + 3600))" | state_set "$rws30" ledger ferry ) > /dev/null
 out=$("$LAUNCH" status "$rws30" --rounds 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'the ledger has rotated 1 time(s)' \
-  && printf '%s\n' "$out" | command grep -q 'ledger.1700000000.rot' \
-  && printf '%s\n' "$out" | command grep -q 'covers the current segment only' \
-  && printf '%s\n' "$out" | command grep -q 'slice 05 · spec' \
+[ $rc -eq 0 ] && command grep -q 'the ledger has rotated 1 time(s)' <<< "$out" \
+  && command grep -q 'ledger.1700000000.rot' <<< "$out" \
+  && command grep -q 'covers the current segment only' <<< "$out" \
+  && command grep -q 'slice 05 · spec' <<< "$out" \
   && ok "a rotated segment renders its tail's rounds AND names the archive — the census never presents the tail as the run" \
   || bad "the rotated shape: $(printf '%s\n' "$out" | tail -2 | tr '\n' ' ')"
 # The freeze claims the ledger ENDS in complete — a stray post-complete row
@@ -703,8 +703,8 @@ m10=$(( $(date +%s) - 3600 ))
   state_append "$rws10" ledger ferry "v=1 t=$((m10 + 400)) event=enter slice=02 stage=spec round=1" ) > /dev/null
 out=$("$LAUNCH" status "$rws10" --rounds 2>&1); rc=$?
 s02r1=$(printf '%s\n' "$out" | command grep -A1 'slice 02 · spec' | command grep 'r1')
-[ $rc -eq 0 ] && [ -n "$s02r1" ] && printf '%s\n' "$s02r1" | command grep -qE 'r1 +[0-9-]+ [0-9:]+ +[0-9]+[smhd] ' \
-  && ! printf '%s\n' "$s02r1" | command grep -q '\?' \
+[ $rc -eq 0 ] && [ -n "$s02r1" ] && command grep -qE 'r1 +[0-9-]+ [0-9:]+ +[0-9]+[smhd] ' <<< "$s02r1" \
+  && ! command grep -q '\?' <<< "$s02r1" \
   && ok "a ledger with events AFTER complete keeps the live clock (the later round renders a positive wall, never the negative-'?' the any-complete freeze produced)" \
   || bad "mid-ledger complete handling: slice-02 row '$s02r1'"
 # A resumed round whose own park row is the last KEYED event, with a keyless
@@ -720,8 +720,8 @@ f11=$(( $(date +%s) - 3600 ))
   state_append "$rws11" ledger ferry "v=1 t=$((f11 + 100)) event=park reason=operator_stop slice=01 stage=spec detail=fixture"
   state_append "$rws11" ledger ferry "v=1 t=$((f11 + 200)) event=ferry_start pid=9" ) > /dev/null
 out=$("$LAUNCH" status "$rws11" --rounds 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -qE 'r1 .*RUNNING' \
-  && ! printf '%s\n' "$out" | command grep -q 'OPEN' \
+[ $rc -eq 0 ] && command grep -qE 'r1 .*RUNNING' <<< "$out" \
+  && ! command grep -q 'OPEN' <<< "$out" \
   && ok "a resumed round stays RUNNING past a trailing keyless ferry_start (its own park row is the keyed frontier)" \
   || bad "the frontier verdict: $(printf '%s\n' "$out" | command grep 'r1')"
 # A keyless row that is NOT park/ferry_start/enter (teardown, slices_index,
@@ -736,17 +736,17 @@ s12=$(( $(date +%s) - 3600 ))
   state_append "$rws12" ledger ferry "v=1 t=$((s12 + 200)) event=park reason=workflow_changed slice= stage= detail=fixture"
   state_append "$rws12" ledger ferry "v=1 t=$((s12 + 300)) event=teardown role=author session=s1" ) > /dev/null
 out=$("$LAUNCH" status "$rws12" --rounds 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -qE 'outside any round \(workflow_changed\) — 5[0-9]m' \
+[ $rc -eq 0 ] && command grep -qE 'outside any round \(workflow_changed\) — 5[0-9]m' <<< "$out" \
   && ok "a keyless teardown does NOT close an out-of-round park (the gap runs to EOF, ~59m — the unset-key shape capped it at 1m)" \
   || bad "the sentinel gap: $(printf '%s\n' "$out" | command grep 'outside any round')"
 corrupt_surface "$rws" ledger
 out=$("$LAUNCH" status "$rws" --rounds 2>&1); rc=$?
-[ $rc -ne 0 ] && printf '%s\n' "$out" | command grep -q 'CORRUPT' \
+[ $rc -ne 0 ] && command grep -q 'CORRUPT' <<< "$out" \
   && ok "a CORRUPT ledger refuses as corrupt (fault != absent — a corruption must not quietly omit rounds)" \
   || bad "rc=$rc over a corrupt ledger: $out"
 rws2=$(mk_ws "$base" roundsnever "$repo" "$branch")
 out=$("$LAUNCH" status "$rws2" --rounds 2>&1); rc=$?
-[ $rc -ne 0 ] && printf '%s\n' "$out" | command grep -qi 'never' \
+[ $rc -ne 0 ] && command grep -qi 'never' <<< "$out" \
   && ok "a topic with no ledger refuses as never-run (absent, not empty)" \
   || bad "rc=$rc on a never-run topic: $out"
 # The EMPTY gate (a ledger whose header exists but no event= rows) is
@@ -768,8 +768,8 @@ n17=$(( $(date +%s) - 300 ))
   printf 'v=2 t=%s event=enter slice=01 stage=spec round=1 future_field=x\n' "$n17" \
     | state_set "$rws17" ledger ferry ) > /dev/null
 out=$("$LAUNCH" status "$rws17" --rounds 2>&1); rc=$?
-[ $rc -eq 0 ] && printf '%s\n' "$out" | command grep -q 'slice 01 · spec' \
-  && ! printf '%s\n' "$out" | command grep -q 'EMPTY' \
+[ $rc -eq 0 ] && command grep -q 'slice 01 · spec' <<< "$out" \
+  && ! command grep -q 'EMPTY' <<< "$out" \
   && ok "a ledger whose rows carry a future version tag still parses — EMPTY is 'no event rows', the parser's own predicate, never a version prefix" \
   || bad "version-prefixed rows refused or read as EMPTY: $out"
 

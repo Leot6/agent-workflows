@@ -134,7 +134,8 @@ probe_backends() {
 }
 
 preflight() {
-  command -v tmux > /dev/null || refuse "tmux not installed (dependency: coreutils, git, tmux, flock, awk/sed/grep)"
+  [ "${BASH_VERSINFO[0]:-0}" -ge 4 ] || refuse "bash >= 4 required, running $BASH_VERSION (macOS: brew install bash, ahead of /bin in PATH)"
+  command -v tmux > /dev/null || refuse "tmux not installed (dependency: git, tmux, awk/sed/grep; Linux also coreutils + flock)"
   command -v git > /dev/null || refuse "git not installed"
   command -v flock > /dev/null || refuse "flock not installed (util-linux; the store serializes writers with it)"
   echo "preflight: $(tmux -V) · $(git --version)"

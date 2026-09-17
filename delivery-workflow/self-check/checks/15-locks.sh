@@ -52,7 +52,7 @@ lock_after=$(cat "$rlock")
 [ "$lock_before" = "$lock_after" ] \
   && ok "the live holder's lock record was NOT overwritten" \
   || bad "second topic overwrote a live lock: '$lock_after'"
-printf '%s\n' "$lock_after" | command grep -q "locktopica" \
+command grep -q "locktopica" <<< "$lock_after" \
   && ok "lock still names topic A's workspace" \
   || bad "lock no longer names topic A: '$lock_after'"
 
@@ -67,7 +67,7 @@ printf 'agent.author.backend=nosuchcli\nagent.reviewer.backend=nosuchcli\n' \
 out=$(bash "$SHLAUNCH" launch "$wsB" 2>&1); rc=$?
 [ $rc -eq 2 ] && ok "launch refuses (rc=2, preflight refusal — no watchdog, no ferry)" \
   || bad "launch rc=$rc, want a preflight refusal"
-printf '%s' "$out" | command grep -q "claimed by another live topic" \
+command grep -q "claimed by another live topic" <<< "$out" \
   && ok "the refusal names the repo-lock conflict at PREFLIGHT (same predicate the ferry's take uses)" \
   || bad "preflight never checked the repo lock — refusal was '$(printf '%s' "$out" | tail -1)' and a real backend would have spent a probe session first"
 [ ! -d "$wsB/.runtime/probe" ] \
@@ -199,8 +199,8 @@ assert_out_has "claimed by another live topic" "the doc-repo conflict is named l
 out=$(bash "$SHLAUNCH" launch "$wsB" 2>&1); rc=$?
 [ $rc -eq 2 ] && ok "launch refuses at preflight while the DOC repo is held (rc=2)" \
   || bad "launch rc=$rc with the doc repo held — want a preflight refusal"
-printf '%s' "$out" | command grep -q "claimed by another live topic" \
-  && printf '%s' "$out" | command grep -qF "$drepo" \
+command grep -q "claimed by another live topic" <<< "$out" \
+  && command grep -qF "$drepo" <<< "$out" \
   && ok "the preflight refusal names the DOC checkout (every declared repo is walked, not just the first)" \
   || bad "preflight did not refuse on the doc repo: $(printf '%s' "$out" | tail -1)"
 [ ! -d "$wsB/.runtime/probe" ] \
@@ -215,7 +215,7 @@ bash -c ". '$hf' '$wsB' > /dev/null 2>&1; take_repo_locks; release_repo_locks" >
 [ ! -f "$gd/delivery.lock" ] && [ ! -f "$dlock" ] \
   && ok "both claims released (a one-repo release would strand the doc checkout for every later topic)" \
   || bad "left behind: code=$([ -f "$gd/delivery.lock" ] && echo yes || echo no) doc=$([ -f "$dlock" ] && echo yes || echo no)"
-sed -i '/^doc\./d' "$wsB/project.kv"
+plat_sed_i '/^doc\./d' "$wsB/project.kv"
 
 echo "-- host lock: one ferry per workspace --"
 rm -rf "$wsA/.runtime/state/lock"

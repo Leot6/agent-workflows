@@ -153,7 +153,7 @@ led_render() { # record -> "MM-DD HH:MM:SS  event  slice stage  rest"
     rest+=("$tok")
   done
   case "$t" in ''|*[!0-9]*) printf '  %s\n' "$1"; return 0 ;; esac
-  h=$(date -d "@$t" '+%m-%d %H:%M:%S' 2>/dev/null) || { printf '  %s\n' "$1"; return 0; }
+  h=$(plat_epoch_fmt "$t" '%m-%d %H:%M:%S' 2>/dev/null) || { printf '  %s\n' "$1"; return 0; }
   local out
   out=$(rtrim "$(printf '  %s  %-13s %-17s %s' "$h" "$ev" "$sl${st:+ $st}" "${rest[*]}")")
   if [ "$(dwidth "$out")" -gt "$WIDTH" ]; then
@@ -581,7 +581,7 @@ render() {
       tpk=$(kv "$run" parked_total); case "$tpk" in ''|*[!0-9]*) tpk=0 ;; esac
       tb=$(config_get budget.topic_wallclock --topic-dir "$WS" 2>/dev/null || true)
       case "$t0" in ''|*[!0-9]*) : ;; *)
-        row topic "$(kv "$run" mode) · started $(date -d "@$t0" '+%m-%d %H:%M' 2>/dev/null) · $(headroom $((now - t0 - tpk)) "$tb")"; drew=1 ;;
+        row topic "$(kv "$run" mode) · started $(plat_epoch_fmt "$t0" '%m-%d %H:%M' 2>/dev/null) · $(headroom $((now - t0 - tpk)) "$tb")"; drew=1 ;;
       esac ;;
   esac
   sep

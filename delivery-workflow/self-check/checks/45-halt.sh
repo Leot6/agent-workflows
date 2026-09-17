@@ -145,7 +145,7 @@ ws=$(new_ws haltdet)
     "v=1 t=10 slice=00 stage=plan-validate attempt=1 round=1 nonce=nDT verdict=not_ready confidence=HIGH detail=first second third batched question" ) > /dev/null
 out=$(bash -c ". '$hf' '$ws' > /dev/null 2>&1; load_position; do_advance" 2>&1); rc=$?
 [ $rc -eq 20 ] && ok "not_ready routes to a class_u park (rc=20)" || bad "rc=$rc, want 20"
-printf '%s' "$out" | command grep -q "second third batched question" \
+command grep -q "second third batched question" <<< "$out" \
   && ok "the park message carries the FULL detail text" \
   || bad "detail truncated to the first token — owner page loses the question set: $(printf '%s' "$out" | tail -1)"
 
@@ -358,7 +358,7 @@ command grep -q 'topic.done' "$base/complete-resend.txt" 2>/dev/null \
 [ $rc -eq 0 ] \
   && ok "relaunch on a completed topic exits 0 (push_gate is a terminal marker, not a resumable gate)" \
   || bad "relaunch after COMPLETE rc=$rc — a completed topic demands a ruling to 'resume' into re-completing itself"
-printf '%s' "$out" | command grep -qi 'complete' \
+command grep -qi 'complete' <<< "$out" \
   && ok "the idempotent relaunch says the topic is COMPLETE and push is the owner's" \
   || bad "no COMPLETE message on relaunch: $out"
 bash -c ". '$hf' '$ws' > /dev/null 2>&1; resume_halt_gate" > /dev/null 2>&1
@@ -643,7 +643,7 @@ put_halt "$wsr3" push_gate 00 close-out 1 $(( $(date +%s) - 400 )) 1 0
 out=$(bash -c ". '$hf' '$wsr3' > /dev/null 2>&1; resume_halt_gate" 2>&1)
 # The gate's own completion line is the premise pin: an absence below over a
 # gate that never ran is a green about nothing.
-printf '%s' "$out" | command grep -q "nothing to resume" \
+command grep -q "nothing to resume" <<< "$out" \
   && ok "the gate took the push_gate branch (terminal marker, idempotent relaunch)" \
   || bad "push_gate resume did not identify itself: $out"
 [ -z "$(state_field "$wsr3" run parked_total 2>/dev/null)" ] \
@@ -664,7 +664,7 @@ out=$(bash -c ". '$hf' '$ws' > /dev/null 2>&1; G_SLICE=01 G_STAGE=spec G_ROUND=1
 [ $rc -eq 20 ] \
   && ok "the same elapsed with NO park credit still parks budget_wallclock (the budget did not weaken)" \
   || bad "rc=$rc, want 20 — the subtraction disarmed the budget"
-printf '%s' "$out" | command grep -q "working" \
+command grep -q "working" <<< "$out" \
   && ok "the park message states the metered quantity (working time, parked excluded)" \
   || bad "park message: $out"
 wst=$(new_ws haltbudgett)
@@ -751,9 +751,9 @@ out=$(bash -c ". '$hf' '$wsl' > /dev/null 2>&1; check_store_integrity" 2>&1); rc
 [ $rc -eq 30 ] \
   && ok "startup integrity gate dies store_fault (rc=30) over the corrupt surface" \
   || bad "check_store_integrity rc=$rc, want 30"
-printf '%s' "$out" | command grep -q "ledger" \
+command grep -q "ledger" <<< "$out" \
   && ok "the fault names the surface" || bad "no surface name in: $out"
-printf '%s' "$out" | command grep -q "tail -n +2" \
+command grep -q "tail -n +2" <<< "$out" \
   && ok "and hands over the repair recipe" || bad "no repair recipe in the fault"
 rm -f "$wsl/.runtime/state/ledger"
 assert_rc 0 "with the corrupt surface removed the gate passes (absent = clean; null control)" -- \
@@ -811,7 +811,7 @@ pd_out=$(pd_unnamed "$pdf" "$WF_ROOT/runtime-docs/operations.md" "$WF_ROOT/runti
 pd_fake=$(sc_tmpdir)/twoofthree.md
 printf 'the severity-trend predicate, or the review round bound. nothing else.\n' > "$pd_fake"
 pd_bad=$(pd_unnamed "$pdf" "$pd_fake")
-printf '%s\n' "$pd_bad" | command grep -q 'decomposition fixpoint' \
+command grep -q 'decomposition fixpoint' <<< "$pd_bad" \
   && ok "known-bad: a document naming two of the three FIRES, naming the missing predicate" \
   || bad "doc-closure arm vacuous — a two-of-three document read as complete"
 # and the extractor itself must not invent members

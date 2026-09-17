@@ -51,10 +51,10 @@ line=$(hdr 02)
 precond "a prev-turnover line was rendered at all" test -n "$line"
 # FLOOR: a turnover citing NO resolvable commit would also read "all still on"
 # — the count is what makes the clean verdict mean anything.
-printf '%s' "$line" | command grep -qE 'slice 01 — [1-9][0-9]* commit reference' \
+command grep -qE 'slice 01 — [1-9][0-9]* commit reference' <<< "$line" \
   && ok "clean reading names a NON-ZERO count of checked commit references" \
   || bad "clean reading has no non-zero count — a turnover citing nothing would read identically: $line"
-printf '%s' "$line" | command grep -q "all still on $branch" \
+command grep -q "all still on $branch" <<< "$line" \
   && ok "clean reading names the branch the references were tested against" \
   || bad "clean reading does not name the branch: $line"
 command grep -q "$tree" <<< "$line" \
@@ -64,10 +64,10 @@ command grep -q "$tree" <<< "$line" \
 echo "-- stale reading: the branch moved under a written turnover --"
 git -C "$repo" reset -q --hard "$c1"
 line=$(hdr 02)
-printf '%s' "$line" | command grep -q WARNING \
+command grep -q WARNING <<< "$line" \
   && ok "a reference that fell off the branch turns the verdict to WARNING" \
   || bad "history rewritten under the turnover and the header still reads clean: $line"
-printf '%s' "$line" | command grep -q "$c2" \
+command grep -q "$c2" <<< "$line" \
   && ok "the WARNING NAMES the off-branch commit (not just a count)" \
   || bad "WARNING does not name $c2: $line"
 command grep -q "$c1" <<< "$line" \
@@ -82,7 +82,7 @@ echo "-- the tip is the PREVIOUS slice's binding, never the reader's --"
 index 'id=01 status=done risk=low repo=code title=a rederive=0
 id=02 status=active risk=low repo=doc title=b rederive=0'
 line=$(hdr 02)
-printf '%s' "$line" | command grep -q "all still on $branch" \
+command grep -q "all still on $branch" <<< "$line" \
   && ok "a doc-bound reader still tests the code-bound writer's commits against the CODE branch" \
   || bad "the reader's own binding was used — every code commit would read off-branch: $line"
 command grep -q "$dbranch" <<< "$line" \
@@ -95,7 +95,7 @@ echo "-- an unresolvable tip reads UNCHECKED, never clean (the absence floor) --
 saved=$(cat "$ws/project.kv")
 printf '%s\n' "$saved" | sed "s|^branch=.*|branch=no/such/branch|" > "$ws/project.kv"
 line=$(hdr 02)
-printf '%s' "$line" | command grep -q UNCHECKED \
+command grep -q UNCHECKED <<< "$line" \
   && ok "a tip that does not resolve is named UNCHECKED" \
   || bad "an unresolvable tip did not read UNCHECKED: $line"
 command grep -q "all still on" <<< "$line" \
@@ -241,7 +241,7 @@ esac
 epath=$(_compose_resolve "$ws" 09 1 'decisions@nn')
 [ -f "$epath" ] && [ ! -s "$epath" ] \
   && ok "known-bad: a slice with no DP rows gets an EMPTY view, never the whole surface" \
-  || bad "empty-slice view is not empty: $(wc -c < "$epath" 2>/dev/null) bytes"
+  || bad "empty-slice view is not empty: $(( $(wc -c < "$epath" 2>/dev/null) )) bytes"
 # ...and the TEMPLATE must describe that, because this resolver hands a PATH to
 # an empty file where an optional entry normally renders the literal "none".
 # Found by rendering a real zero-DP slice, not by reading the patch: the first

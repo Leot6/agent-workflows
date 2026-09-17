@@ -15,7 +15,13 @@ export LC_ALL=C
 # same code. Comment lines only: a date inside a kv VALUE, a signature literal or
 # a string is data and is not swept (`^[[:space:]]*#` anchors it).
 chrono_sweep() { # <root> -> "path:line: text" per dated comment line; rc 0 clean / 1 hits / 2 broken
-  local out rc
+  local out rc d
+  # A missing root is checked here, not left to grep: BSD grep applies
+  # --include to its operands and skips a missing directory as filtered out,
+  # returning "no match" — the exact fault-read-as-clean this sweep refuses.
+  for d in runtime-scripts config; do
+    [ -d "$1/$d" ] || { echo "grep could not sweep $1 ($d/ is missing)"; return 2; }
+  done
   out=$(cd "$1" && command grep -rnE '^[[:space:]]*#.*20[0-9]{2}-[0-9]{2}' \
           runtime-scripts config --include='*.sh' --include='*.kv' --include='*.tsv' 2>/dev/null)
   rc=$?
@@ -41,7 +47,7 @@ echo "-- known-bads: the shape fires; data and pointers do not --"
 kb=$(sc_tmpdir); mkdir -p "$kb/runtime-scripts/lib" "$kb/config"
 printf '#!/usr/bin/env bash\n# measured 2026-09-01 on one topic: nine rows\nx=1\n' > "$kb/runtime-scripts/lib/dated.sh"
 out=$(chrono_sweep "$kb"); rc=$?
-[ $rc -eq 1 ] && printf '%s\n' "$out" | command grep -q 'dated.sh:2:' \
+[ $rc -eq 1 ] && command grep -q 'dated.sh:2:' <<< "$out" \
   && ok "known-bad: a dated comment in a runtime script fires, naming file and line" \
   || bad "known-bad did not fire (rc=$rc): $out"
 printf '# calibrated on the drill: see iteration-log: some-entry\nkey=2026-09-01\n' > "$kb/config/values.kv"
@@ -52,7 +58,7 @@ chrono_sweep "$kb" > /dev/null; rc=$?
   || bad "a value line or a pointer comment fired (rc=$rc) — the arm would refuse its own remedy"
 printf '# --- caps (2026-09-01 calibration) ---\nk=1\n' > "$kb/config/dated.kv"
 out=$(chrono_sweep "$kb"); rc=$?
-[ $rc -eq 1 ] && printf '%s\n' "$out" | command grep -q 'dated.kv:1:' \
+[ $rc -eq 1 ] && command grep -q 'dated.kv:1:' <<< "$out" \
   && ok "known-bad: a dated comment in a config file fires too (config/ is in scope)" \
   || bad "a dated config comment did not fire (rc=$rc): $out"
 rm -rf "$kb/runtime-scripts" "$kb/config"; mkdir -p "$kb/runtime-scripts" "$kb/config"

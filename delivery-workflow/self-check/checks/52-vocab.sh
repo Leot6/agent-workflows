@@ -66,7 +66,7 @@ echo "-- the confidence vocabulary is ONE closed set across every place that tea
 # with fourteen copies of the instruction.
 # Extract by POSITION (what follows the word), never by grepping for the expected
 # list: a check that looks for what it expects can only find the set missing.
-conf_at() { sed -n 's/.*confidence[ <]\+\([A-Z|]\+\).*/\1/p' "$1" | head -1; }
+conf_at() { sed -nE 's/.*confidence[ <]+([A-Z|]+).*/\1/p' "$1" | head -1; }
 conf_auth=$(sed -n 's/.*case "\$confidence" in \([A-Z|]*\)).*/\1/p' "$RS/session/record.sh")
 precond "record.sh states a confidence vocabulary" test -n "$conf_auth"
 conf_bad=""; conf_n=0; conf_files=0

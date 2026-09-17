@@ -10,6 +10,7 @@ _SC_LIB_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 SC_ROOT=$(cd "$_SC_LIB_DIR/.." && pwd)                    # self-check/
 WF_ROOT=$(cd "$SC_ROOT/.." && pwd)                        # delivery-workflow/
 RS="$WF_ROOT/runtime-scripts"
+. "$RS/lib/platform.sh"
 # Pin the workflow root for lib copies sourced from temp dirs (headless ferry).
 # The drill overrides these to its shadow root before running the shadow ferry.
 export CONFIG_WORKFLOW_ROOT="$WF_ROOT"
@@ -73,7 +74,7 @@ assert_rc() {
 # space or different column padding renders identically to the needle, so
 # "the needle is plainly present in its own got: line" was never a claim about
 # bytes. `55-monitor`'s arm guarding this renderer against escape bytes in a
-# non-TTY capture is in the same file as one of the firings. `cat -A` is what
+# non-TTY capture is in the same file as one of the firings. `cat -vet` is what
 # tells the two apart on the spot.
 # So a tenth firing classifies itself: rc>=2 means the match did not complete and
 # the class is settled; rc=1 means grep RAN and genuinely did not match, the
@@ -88,7 +89,7 @@ assert_out_has() {
   command grep -qF -- "$1" <<< "$SC_OUT"; rc=$?
   case $rc in
     0) ok "$2" ;;
-    1) bad "$2 — output lacks '$1' (grep RAN and matched nothing, rc=1). needle bytes: $(printf '%s' "$1" | cat -A) | haystack head: $(printf '%s' "$SC_OUT" | head -c 300 | cat -A)" ;;
+    1) bad "$2 — output lacks '$1' (grep RAN and matched nothing, rc=1). needle bytes: $(printf '%s' "$1" | cat -vet) | haystack head: $(printf '%s' "$SC_OUT" | head -c 300 | cat -vet)" ;;
     *) bad "$2 — the match over '$1' did not complete (rc=$rc); this is not a clean verdict" ;;
   esac
 }
@@ -105,7 +106,7 @@ assert_out_lacks() {
   command grep -qF -- "$1" <<< "$SC_OUT"; rc=$?
   case $rc in
     1) ok "$2" ;;
-    0) bad "$2 — output still carries '$1'. haystack head: $(printf '%s' "$SC_OUT" | head -c 300 | cat -A)" ;;
+    0) bad "$2 — output still carries '$1'. haystack head: $(printf '%s' "$SC_OUT" | head -c 300 | cat -vet)" ;;
     *) bad "$2 — the match over '$1' did not complete (rc=$rc); absence is NOT established" ;;
   esac
 }
@@ -117,6 +118,10 @@ assert_out_lacks() {
 if [ -z "${SC_SESSION_TMP:-}" ]; then
   SC_SESSION_TMP=$(mktemp -d "${TMPDIR:-/tmp}/dwsc.XXXXXX") \
     || { echo "mktemp failed" >&2; exit 1; }
+  # Normalised once, here: a TMPDIR ending in '/' (macOS sets one) yields a
+  # '//' that every `cd && pwd` in the tree then collapses, so a fixture path
+  # and the path the workflow records would differ by a byte.
+  SC_SESSION_TMP=$(cd "$SC_SESSION_TMP" && pwd)
   export SC_SESSION_TMP
   _SC_OWN_ROOT=1
 else

@@ -51,23 +51,23 @@ gate_redproofs() { # <lib-dir> <checks-dir> -> violation lines; rc is the caller
   # load-bearing for the same reason: joining leaves two spaces, and a
   # single-space pattern silently drops every wrapped proof.
   proofs=$(cat "$chd"/*.sh 2>/dev/null \
-    | sed -e ':a' -e '/\\$/{N;s/\\\n[[:space:]]*/ /;ba}' \
+    | sed -e ':a' -e '/\\$/{N;s/\\\n[[:space:]]*/ /;ba' -e '}' \
     | command grep -oE 'assert_rc 1 .*--[[:space:]]+gates_[a-z_]+' \
     | command grep -oE 'gates_[a-z_]+$' | sort -u)
   [ -n "$defs" ]   || { echo "sweep read NO gate definitions under $libd"; return 0; }
   [ -n "$proofs" ] || { echo "sweep extracted NO red-proofs from $chd"; return 0; }
   for g in $defs; do
     case " $exempt_list " in *" $g "*) continue ;; esac
-    printf '%s\n' "$proofs" | command grep -qx "$g" \
+    command grep -qx "$g" <<< "$proofs" \
       || echo "$g has no red-proof: nothing in the suite shows it can refuse anything"
   done
   for g in $exempt_list; do
-    printf '%s\n' "$defs" | command grep -qx "$g" \
+    command grep -qx "$g" <<< "$defs" \
       || echo "exempt name '$g' is no longer a gate function (a stale carve-out passes its successor)"
   done
 }
 n_def=$(command grep -rhoE '^gates_[a-z_]+\(\)' "$WF_ROOT/runtime-scripts/lib" | sort -u | command grep -c . || true)
-n_pr=$(cat "$SC_ROOT/checks"/*.sh | sed -e ':a' -e '/\\$/{N;s/\\\n[[:space:]]*/ /;ba}' \
+n_pr=$(cat "$SC_ROOT/checks"/*.sh | sed -e ':a' -e '/\\$/{N;s/\\\n[[:space:]]*/ /;ba' -e '}' \
   | command grep -cE 'assert_rc 1 .*--[[:space:]]+gates_[a-z_]+' || true)
 precond "the sweep sees the gate library and the proofs (${n_def} gate fns, ${n_pr} red-proof assertions)" \
   bash -c '[ "$1" -ge 8 ] && [ "$2" -ge 20 ]' _ "$n_def" "$n_pr"
@@ -85,7 +85,7 @@ printf 'gates_dirty_fp() { :; }\ngates_zzz_proven() { :; }\ngates_zzz_unproven()
 # this known-bad would pass on the floor and prove nothing about the loop.
 printf 'assert_rc 1 "sibling refuses" -- gates_zzz_proven "$ws"\n' > "$frp/checks/01-x.sh"
 printf 'assert_rc 0 "it passes" -- gates_zzz_unproven "$ws"\n' >> "$frp/checks/01-x.sh"
-printf '%s' "$(gate_redproofs "$frp/lib" "$frp/checks")" | command grep -q 'gates_zzz_unproven has no red-proof' \
+command grep -q 'gates_zzz_unproven has no red-proof' <<< "$(gate_redproofs "$frp/lib" "$frp/checks")" \
   && ok "known-bad: a gate with only a PASS assertion is caught (passing is not proof of refusing)" \
   || bad "unproven gate slipped through: $(gate_redproofs "$frp/lib" "$frp/checks")"
 printf 'assert_rc 1 "it refuses" -- \\\n  gates_zzz_unproven "$ws"\n' >> "$frp/checks/01-x.sh"
@@ -93,7 +93,7 @@ printf 'assert_rc 1 "it refuses" -- \\\n  gates_zzz_unproven "$ws"\n' >> "$frp/c
   && ok "…and a WRAPPED red-proof satisfies it (the continuation join is exercised, not assumed)" \
   || bad "wrapped red-proof not seen: $(gate_redproofs "$frp/lib" "$frp/checks")"
 printf 'gates_zzz_proven() { :; }\ngates_zzz_unproven() { :; }\n' > "$frp/lib/gates.sh"
-printf '%s' "$(gate_redproofs "$frp/lib" "$frp/checks")" | command grep -q 'stale carve-out' \
+command grep -q 'stale carve-out' <<< "$(gate_redproofs "$frp/lib" "$frp/checks")" \
   && ok "known-bad: an exemption for a name that is no longer a gate is caught" \
   || bad "stale exemption survived: $(gate_redproofs "$frp/lib" "$frp/checks")"
 rm -f "$frp/checks/01-x.sh"

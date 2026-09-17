@@ -69,8 +69,8 @@ historical snapshot commit, owner-gated). Nothing in v2 writes into the v1 tree.
 ## 3. Self-check (`self-check/`, non-runtime)
 
 Runs when the workflow's own source changes (dev-time), plus before any resume that
-follows a maintenance hold. Order: **store checks first** (everything else's fixtures
-stand on it), then config closure, then mechanisms, then the drill.
+follows a maintenance hold. Order: **the platform layer first** (every later check stands on its
+answers), then **store checks** (everything else's fixtures stand on it), then config closure, then mechanisms, then the drill.
 
 - **Two-direction non-vacuity everywhere**: known-bad fires, known-good passes; every
   check asserts its fixture precondition (the gate saw N>0 candidates) so a broken fixture

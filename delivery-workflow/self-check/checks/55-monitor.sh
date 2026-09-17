@@ -162,7 +162,7 @@ cellwidth() { LC_ALL=C awk '{ n = gsub(/[\200-\277]/, "", $0); w = length($0) - 
 [ "$(printf '%s\n' "$blk" | cellwidth)" -le 74 ] \
   && ok "every ledger row fits the frame (the full record is one state_get away; the live park's detail summarizes in the headline block with a pointer)" \
   || bad "a ledger row ran to $(printf '%s\n' "$blk" | cellwidth) columns — the panel is unreadable exactly when something went wrong"
-printf '%s\n' "$blk" | command grep -q 'park' \
+command grep -q 'park' <<< "$blk" \
   && ok "the truncated row still names its event" || bad "truncation ate the event name"
 
 echo "-- a corrupt HALT surface is loud: a park hidden there is the worst silent state --"
@@ -188,7 +188,7 @@ corrupt_surface "$wsr" run
 assert_rc 0 "monitor --once renders over a corrupt run surface" -- "$RS/monitor.sh" "$wsr" --once
 assert_out_has "the run surface is corrupt; do not treat as absent" "the headline names the RUN surface (the pre-refactor text, restored)"
 assert_out_lacks "in the halt surface" "and does not name the halt surface it did not read a fault from"
-printf '%s\n' "$SC_OUT" | command grep -q '^state=STORE_FAULT ' \
+command grep -q '^state=STORE_FAULT ' <<< "$SC_OUT" \
   && ok "the machine line still reads the one token — a poll sees the store is corrupt, the panel says which surface" \
   || bad "machine line over a corrupt run surface: $(printf '%s\n' "$SC_OUT" | command grep '^state=' || echo ABSENT)"
 
@@ -197,12 +197,12 @@ wsl=$(new_ws monledger)
 t1=$(( $(date +%s) - 3600 ))
 ( state_append "$wsl" ledger ferry "v=1 t=$t1 event=stage.done slice=01 stage=spec round=1" ) > /dev/null
 assert_rc 0 "monitor --once renders the ledger" -- "$RS/monitor.sh" "$wsl" --once
-assert_out_has "$(date -d "@$t1" '+%m-%d %H:%M:%S')" "the record carries its local clock time"
+assert_out_has "$(plat_epoch_fmt "$t1" '%m-%d %H:%M:%S')" "the record carries its local clock time"
 blk=$(ledger_block "$SC_OUT")
 command grep -qE '(^| )t=[0-9]{9,}( |$)' <<< "$blk" \
   && bad "a raw epoch t= is still in the ledger block: $(printf '%s\n' "$blk" | command grep -E '(^| )t=[0-9]{9,}( |$)' | head -1)" \
   || ok "no bare epoch left in the rendered ledger"
-printf '%s\n' "$blk" | command grep -qE 'stage\.done +01 spec +round=1' \
+command grep -qE 'stage\.done +01 spec +round=1' <<< "$blk" \
   && ok "the record is columnised (time · event · slice stage) with its remaining fields verbatim" \
   || bad "the record did not columnise: $(printf '%s\n' "$blk" | tail -2 | tr '\n' ' ')"
 
@@ -247,7 +247,7 @@ echo "-- the machine line: a poll's first line, and the FAIL count no live surfa
 ( state_put "$wsp" halt ferry "reason=class_u" "slice=01" "stage=impl" "resolved=0" \
     "t=$(date +%s)" "detail=d" ) > /dev/null
 assert_rc 0 "monitor --once renders the parked topic again" -- "$RS/monitor.sh" "$wsp" --once
-printf '%s\n' "$SC_OUT" | command grep -q '^state=PARKED reason=class_u ' \
+command grep -q '^state=PARKED reason=class_u ' <<< "$SC_OUT" \
   && ok "the first machine line reads state=PARKED with the park's reason (a poll keys on the token, not the paint)" \
   || bad "parked machine line wrong: $(printf '%s\n' "$SC_OUT" | command grep '^state=' || echo ABSENT)"
 [ "$(printf '%s\n' "$SC_OUT" | command grep -c '^state=')" -eq 1 ] \
@@ -259,12 +259,12 @@ printf '%s\n' "$SC_OUT" | command grep -q '^state=PARKED reason=class_u ' \
     && state_append "$wsp" gates gate "v=1 t=4 gate=claims result=PASS sha=a detail=x" \
     && state_append "$wsp" gates gate "v=1 t=5 gate=structure result=PASS sha=a detail=x" ) > /dev/null
 assert_rc 0 "monitor --once renders with a gates surface holding 2 FAIL of 5" -- "$RS/monitor.sh" "$wsp" --once
-printf '%s\n' "$SC_OUT" | command grep -q '^state=PARKED reason=class_u gate_fails=2 attestations=5$' \
+command grep -q '^state=PARKED reason=class_u gate_fails=2 attestations=5$' <<< "$SC_OUT" \
   && ok "the running FAIL count rides the machine line: gate_fails=2 attestations=5 — the quality number, live" \
   || bad "fails line wrong: $(printf '%s\n' "$SC_OUT" | command grep '^state=')"
 wsfresh=$(new_ws monfresh)
 assert_rc 0 "monitor --once renders a workspace with no gates surface yet" -- "$RS/monitor.sh" "$wsfresh" --once
-printf '%s\n' "$SC_OUT" | command grep -q '^state=RUNNING gate_fails=absent attestations=0$' \
+command grep -q '^state=RUNNING gate_fails=absent attestations=0$' <<< "$SC_OUT" \
   && ok "an absent gates surface reads gate_fails=absent (absent is named, never zero)" \
   || bad "absent direction wrong: $(printf '%s\n' "$SC_OUT" | command grep '^state=')"
 echo "-- panel properties: a captured frame is plain, fixed-width and blank-free --"
@@ -485,7 +485,7 @@ fi
 # green is a claim about a predicate nobody has seen fire.
 kbr=$(sc_tmpdir)
 cp -a "$RS" "$kbr/runtime-scripts"
-sed -i 's/ "live_class=" "live_hb_age=" "live_age=" "live_idle=" "live_working=" "live_t="//' "$kbr/runtime-scripts/ferry.sh"
+plat_sed_i 's/ "live_class=" "live_hb_age=" "live_age=" "live_idle=" "live_working=" "live_t="//' "$kbr/runtime-scripts/ferry.sh"
 kb_gaps=$(identity_gaps "$kbr/runtime-scripts" "$W_KEYS")
 case "$kb_gaps" in
   *ferry.sh*) ok "known-bad: with the clear removed from ferry.sh's enter_stage the sweep NAMES it ($(printf '%s' "$kb_gaps" | head -1))" ;;

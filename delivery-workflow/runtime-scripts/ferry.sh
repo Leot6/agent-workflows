@@ -132,7 +132,7 @@ park() { # reason detail [screen_file]
     echo "t=$(date +%s)"
     # halt_id: rulings bind by IDENTITY (epoch seconds are too coarse; a
     # ruling for a previous halt must never answer a new one).
-    echo "halt_id=$(date +%s%N).$$"
+    echo "halt_id=$(plat_now_ns).$$"
     echo "notified=0"
     echo "resolved=0"
     # Screen text travels as a SIDECAR file only — inlining free text after
@@ -403,7 +403,7 @@ complete_topic() {
   {
     echo "reason=push_gate"; echo "detail=close-out done — review the ledger and push (Class U; the workflow never pushes)"
     echo "slice=00"; echo "stage=close-out"; echo "t=$(date +%s)"
-    echo "halt_id=$(date +%s%N).$$"; echo "notified=0"; echo "resolved=0"
+    echo "halt_id=$(plat_now_ns).$$"; echo "notified=0"; echo "resolved=0"
   } | state_set "$WS" halt ferry || true
   if notify_fire "$WS" topic.done none "topic $TOPIC complete: close-out done; push is the owner's (Class U)"; then
     state_put "$WS" halt ferry "notified=1" > /dev/null 2>&1 || true

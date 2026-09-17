@@ -1,0 +1,51 @@
+# Both workflow trees' self-checks on both supported hosts. The trees promise
+# Linux and macOS (delivery-workflow/runtime-docs/operations.md §9); this is
+# where that promise is re-proven on every change instead of once.
+name: self-check
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  self-check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y tmux shellcheck
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install bash tmux shellcheck
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+
+      - name: Toolchain
+        run: |
+          bash --version | head -1
+          tmux -V
+          git --version
+
+      # git identity for the fixtures' throwaway repositories
+      - run: |
+          git config --global user.name  "self-check"
+          git config --global user.email "self-check@example.invalid"
+          git config --global init.defaultBranch main
+
+      - name: planning-workflow
+        run: bash planning-workflow/self-check/check.sh
+
+      - name: delivery-workflow
+        run: bash delivery-workflow/self-check/check.sh --jobs 4
+
+      - name: twin declarations
+        run: bash twin_diff.sh

@@ -463,15 +463,31 @@ are about to delete appears there, pin those commits first
 (`git tag -a iterlog-anchor/<sha8> <sha> -m 'cited by …'`) and delete after —
 the order is the whole point, since afterwards there is nothing left to pin.
 
-## 9. environment assumptions (Linux-only, stated)
+## 9. environment assumptions (Linux and macOS, stated)
 
-procfs (`/proc/<pid>/stat` starttime for pid-reuse defense; process-subtree CPU
-accounting; `/proc/loadavg`) · tmux with `pipe-pane` (the window-size pin
-needs ≥ 2.9 — backend-seam.md §4; 3.x is what this tree is measured on) ·
-same-filesystem
-atomic rename for the store (`.runtime/tmp` and `.runtime/state` on one fs) ·
-mkdir-atomic locks · epoch-second timestamps. none of this is portable to macOS/BSD
-without adapter work; do not assume it silently.
+every host difference is answered in ONE file, `runtime-scripts/lib/platform.sh`,
+and nothing else branches on the platform:
+
+- **process identity and CPU** — a pid's start identity (pid-reuse defense) and
+  the process-subtree CPU the watch loop reads. Linux: procfs
+  (`/proc/<pid>/stat`), in jiffies. macOS: `ps` (`lstart`, `time`), in
+  hundredths of a second — `plat_clk_tck` names the unit, so
+  `liveness.cpu_busy_pct` means the same share of a core on both. the macOS
+  start identity is second-grained: a pid reused within the same second is the
+  one reuse it cannot tell apart.
+- **commands BSD userland lacks** — `flock` (fd form), `timeout`, `md5sum`,
+  `setsid`: `runtime-scripts/lib/darwin-bin/` holds small perl stand-ins, put
+  first on `PATH` on macOS, each covering the forms this tree uses and refusing
+  any other by name — so a Mac's behaviour does not depend on what else it has
+  installed.
+- **formats that differ** — nanosecond clock, epoch → local time, `stat` fields,
+  load average, in-place `sed`, a pty for `script(1)`: one `plat_*` function each.
+
+and on both hosts: bash ≥ 4 · tmux with `pipe-pane` (the window-size pin needs
+≥ 2.9 — backend-seam.md §4) · same-filesystem atomic rename for the store
+(`.runtime/tmp` and `.runtime/state` on one fs) · mkdir-atomic locks ·
+epoch-second timestamps. a third host is a third branch in `platform.sh` and a
+green `self-check/check.sh` on it — never an assumption.
 
 ## 10. logs and store rotation
 

@@ -78,10 +78,15 @@ run_form "$ARCH" "architecture.md" < <(spec_docs | xargs grep -hoE 'architecture
 run_form "$PROTO" "protocol" < <(spec_docs | xargs grep -hoE 'protocol(\.md)?`? §[0-9]+(\.[0-9]+)*' 2>/dev/null \
       | sed 's/.*§//' | sort -u); n_pro=$FORM_N
 
+# Lookbehinds need PCRE, which BSD grep lacks; perl carries the same engine on
+# both hosts (Debian/Ubuntu ship perl-base as essential, macOS ships perl).
+pcre_matches() { # <pattern> <file>... -> every match, one per line
+  PAT=$1 perl -ne 'while (/$ENV{PAT}/g) { print "$&\n" }' "${@:2}"
+}
 BARE='(?<!A)(?<!architecture\.md)(?<!architecture\.md`)(?<!protocol)(?<!protocol\.md)(?<!protocol\.md`) §[0-9]+(\.[0-9]+)*'
 n_self=0
 for f in "$ARCH" "$PROTO"; do
-  run_form "$f" "$(basename "$f") self" < <(grep -hoP "$BARE" "$f" 2>/dev/null \
+  run_form "$f" "$(basename "$f") self" < <(pcre_matches "$BARE" "$f" 2>/dev/null \
       | sed 's/.*§//' | sort -u)
   n_self=$((n_self + FORM_N))
 done
@@ -98,7 +103,7 @@ while IFS= read -r ref; do
   n_oth=$((n_oth + 1))
   resolve_either "$ref" "bare (other doc) §$ref"
 done < <(harvest_docs | grep -v -e "^$ARCH$" -e "^$PROTO$" \
-      | xargs grep -hoP '(?<!brief \d)'"$BARE" 2>/dev/null | sed 's/.*§//' | sort -u)
+      | { mapfile -t _docs; pcre_matches '(?<!brief \d)'"$BARE" "${_docs[@]}"; } 2>/dev/null | sed 's/.*§//' | sort -u)
 
 # Per-form floors, not one aggregate: the smallest form is a twentieth of the
 # total, so a single aggregate floor cannot notice a form going dark.

@@ -100,7 +100,7 @@ state_get "$ws" sessions | command grep -E '(^| )role=author( |$)' | command gre
   && ok "the sessions record carries the backend that PRODUCED the session (the field the comparison needs)" \
   || bad "no backend= on the author sessions row: $(state_get "$ws" sessions | command grep -E '(^| )role=author( |$)')"
 # Now the switch, made where an operator makes it.
-sed -i 's/^agent\.author\.backend=test$/agent.author.backend=test2/' "$ws/config/topic.kv"
+plat_sed_i 's/^agent\.author\.backend=test$/agent.author.backend=test2/' "$ws/config/topic.kv"
 precond "topic.kv now binds the author to test2" \
   bash -c 'command grep -q "^agent.author.backend=test2$" "$1/config/topic.kv"' _ "$ws"
 sleep 1
@@ -108,10 +108,10 @@ shadow_env "$LAUNCH" rule "$ws" --slice 00 --text "MOCK-RULING: proceed on the n
   && ok "launch.sh rule recorded the ruling (the park is dischargeable)" || bad "launch.sh rule failed"
 run_ferry "$ws" "$log"; rc=$?
 sp2=$(state_get "$ws" ledger | command grep 'event=spawn .*stage=split ' | tail -1)
-printf '%s\n' "$sp2" | command grep -q 'backend=test2' \
+command grep -q 'backend=test2' <<< "$sp2" \
   && ok "run 2's split spawn resolved the NEW backend (backend=test2)" \
   || bad "split respawn did not resolve test2: $sp2"
-printf '%s\n' "$sp2" | command grep -q 'mode=cold' \
+command grep -q 'mode=cold' <<< "$sp2" \
   && ok "and it spawned COLD ('$sp2') — a session produced by another backend is not reusable, whatever its liveness says" \
   || bad "split respawned mode=warm on a session the OLD backend produced: $sp2 — the switch was recorded and then silently defeated"
 state_get "$ws" audit | command grep -q 'backend .*: cold-fallback' \

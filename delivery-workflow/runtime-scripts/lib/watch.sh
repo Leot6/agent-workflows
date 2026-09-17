@@ -29,10 +29,9 @@ _WATCH_LIB_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 . "$_WATCH_LIB_DIR/notify.sh"
 . "$_WATCH_LIB_DIR/../backends/pty_tmux.sh"
 
-watch_subtree_cpu() { # root_pid -> summed utime+stime jiffies of the subtree
-  cat /proc/[0-9]*/stat 2>/dev/null | awk -v root="$1" '
-    { pid=$1; line=$0; sub(/^[^(]*\(/,"",line); sub(/^.*\) /,"",line)
-      split(line,f," "); ppid[pid]=f[2]; cpu[pid]=f[12]+f[13] }
+watch_subtree_cpu() { # root_pid -> summed cpu ticks of the subtree (unit: plat_clk_tck)
+  plat_proc_table | awk -v root="$1" '
+    { ppid[$1]=$2; cpu[$1]=$3 }
     END {
       total=0; queue[0]=root; head=0; tail=1; seen[root]=1
       while (head < tail) {
@@ -233,9 +232,9 @@ watch_wait() { # ws decl session pane_pid pane_start server_pid server_start non
   notify_fresh=$(config_get liveness.notify_fresh --topic-dir "$ws") || return 3
   local retry_grace
   retry_grace=$(config_get liveness.retry_grace --topic-dir "$ws") || return 3
-  # Jiffies per second per core, for turning the percent into a comparable
-  # delta. Non-Linux or a broken getconf falls back to the near-universal 100.
-  clk=$(getconf CLK_TCK 2>/dev/null); case "$clk" in ''|*[!0-9]*) clk=100 ;; esac
+  # CPU ticks per second per core, for turning the percent into a comparable
+  # delta — the unit watch_subtree_cpu reports in.
+  clk=$(plat_clk_tck)
   local nudge_text
   nudge_text=$(pty_decl_get "$decl" nudge_text 2>/dev/null || echo continue)
 

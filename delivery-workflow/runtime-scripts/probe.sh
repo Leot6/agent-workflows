@@ -231,7 +231,7 @@ sed -e "s|{WORKFLOW_ROOT}|$WROOT|g" -e "s|{WORKSPACE}|$PWS|g" \
   "$WROOT/config/$profile_rel" > "$PWS/.runtime/profile.json" \
   || refuse "profile instantiation failed"
 
-NONCE=$(printf 'probe.%s.%s' "$(date +%s%N)" $$ | md5sum | cut -c1-16)
+NONCE=$(printf 'probe.%s.%s' "$(plat_now_ns)" $$ | md5sum | cut -c1-16)
 RECORD="$P_DIR/session/record.sh"
 # The probe plays the ferry for this scratch session: it seeds the stage and
 # sessions surfaces exactly as run_attempt would (writer class ferry) — the

@@ -6,6 +6,7 @@
 # (WS, HOST_LOCK, OWN_LOCK, state_audit) — it is a half, not a library with
 # its own contract. The EXIT trap that releases the host lock is wired in
 # ferry.sh's startup section, where the globals it reads are set.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/platform.sh"
 
 # rc 0 = a live ferry holds HOST_LOCK. One truth, in lib/state.sh, shared with
 # launch.sh — which needs the same answer for `stop` (see state_host_holder).

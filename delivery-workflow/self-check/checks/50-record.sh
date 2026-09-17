@@ -149,9 +149,9 @@ assert_out_has "record.sh learn" "and the write path that clears it"
 assert_rc 0 "record.sh learn records a leak class inside the stage" -- "$RECORD" learn "$ws" \
   --leak-class conformance --text "finding 1: the report narrated a range run nothing attested"
 lrow=$( . "$RS/lib/state.sh"; state_get "$ws" learnings | tail -1 )
-printf '%s\n' "$lrow" | command grep -qE '(^| )slice=01( |$)' \
-  && printf '%s\n' "$lrow" | command grep -qE '(^| )stage=postcheck( |$)' \
-  && printf '%s\n' "$lrow" | command grep -qE '(^| )round=1( |$)' \
+command grep -qE '(^| )slice=01( |$)' <<< "$lrow" \
+  && command grep -qE '(^| )stage=postcheck( |$)' <<< "$lrow" \
+  && command grep -qE '(^| )round=1( |$)' <<< "$lrow" \
   && ok "the learnings row carries slice, stage and round — the key the door matches on" \
   || bad "learnings row lacks stage/round: $lrow"
 assert_rc 2 "one row for two substantive findings is still short (one row per finding)" -- "$RECORD" emit "$ws" \
@@ -175,12 +175,12 @@ assert_rc 0 "two rows for two findings: the postcheck emits" -- "$RECORD" emit "
 # refusal three lines up — an edit has two ends, and one of them was an
 # assertion about a count.
 lout=$("$RECORD" learn "$ws" --leak-class gate --record progress --text "finding G: a totals line the progress ledger contradicts" 2>&1)
-printf '%s\n' "$lout" | command grep -q 'costs you nothing' \
-  && printf '%s\n' "$lout" | command grep -q 'this one anchor' \
+command grep -q 'costs you nothing' <<< "$lout" \
+  && command grep -q 'this one anchor' <<< "$lout" \
   && ok "a gate tag is confirmed FREE and single-anchor-promotable (§9's rewritten rule)" \
   || bad "the gate branch reprices the tag; got: $lout"
 lout=$("$RECORD" learn "$ws" --leak-class novel --text "finding N: nothing upstream could have seen this" 2>&1)
-printf '%s\n' "$lout" | command grep -q 'second independent anchor' \
+command grep -q 'second independent anchor' <<< "$lout" \
   && ok "…and a judgment class still carries §14's two-anchor bar (the branch is per class, not a blanket)" \
   || bad "the non-gate branch lost its two-anchor sentence; got: $lout"
 
@@ -213,11 +213,11 @@ assert_rc 2 "--record on a class that names no predicate refuses (an unused fiel
   "$RECORD" learn "$ws" --leak-class novel --record git --text "finding N2: novel, with a record it cannot have"
 assert_out_has "only for leak_class=gate" "the refusal says which class the field belongs to"
 lrow=$( . "$RS/lib/state.sh"; state_get "$ws" learnings | command grep -F 'record=git' | tail -1 )
-printf '%s\n' "$lrow" | command grep -qE '(^| )record=git( |$)' \
+command grep -qE '(^| )record=git( |$)' <<< "$lrow" \
   && ok "the value lands as its own space-delimited field, before text= (the harvest cuts on it)" \
   || bad "record= is not a cut-able field on the row: $lrow"
 lrow=$( . "$RS/lib/state.sh"; state_get "$ws" learnings | command grep -F 'leak_class=novel ' | tail -1 )
-printf '%s\n' "$lrow" | command grep -qE '(^| )record=( |$)' \
+command grep -qE '(^| )record=( |$)' <<< "$lrow" \
   && ok "a non-gate row carries record= EMPTY rather than omitting it (absent vs not-applicable never differ)" \
   || bad "a non-gate learnings row omits the record field entirely: $lrow"
 mk_review "$ws/slices/01/postcheck.2.md" postcheck 01 2
@@ -281,7 +281,7 @@ echo "-- the SPEC must match its template structure at emit (the door, not the g
 # once in four topics (a section inserted, `## 8. refine log` pushed to `## 9`).
 # Reasoning lives at the routing site and on the iteration-log row, not twice.
 mk_spec "$ws" 01 1
-sed -i 's/^## 8\. refine log/## 8. decisions — Class A\n## 9. refine log/' "$ws/slices/01/spec.md"
+plat_sed_i 's/^## 8\. refine log/## 8. decisions — Class A\n## 9. refine log/' "$ws/slices/01/spec.md"
 activate_stage "$ws" spec 01 1 nST1
 assert_rc 2 "a spec whose contract sections are renumbered refuses at emit" -- \
   "$RECORD" emit "$ws" --stage spec --nonce nST1 --verdict drafted --confidence HIGH \
@@ -381,11 +381,11 @@ echo "-- the halt document's NUMBERS and CITATIONS are gated, not narrated --"
 wsh=$(mk_ws "$base" halttopic "$repo" "$branch")
 activate_stage "$wsh" impl 01 1 nH1
 mk_halt "$wsh" 01 1
-sed -i 's#| note | fixture halt, no load-bearing number | - | - | - | - |#| cite | the rule forbids raising the cap | coding-rules.md\#10. commit size | Do not raise this | - | - |#' "$wsh/slices/01/halt.1.md"
+plat_sed_i 's#| note | fixture halt, no load-bearing number | - | - | - | - |#| cite | the rule forbids raising the cap | coding-rules.md\#10. commit size | Do not raise this | - | - |#' "$wsh/slices/01/halt.1.md"
 assert_rc 2 "a halt whose cite row echoes text the cited file does not carry is REFUSED at emit" -- \
   "$RECORD" emit "$wsh" --stage impl --nonce nH1 --halt class_u --detail "Q1" --confidence HIGH
 assert_out_has "content echo" "the refusal is the claims resolver's, naming the echo that did not resolve"
-sed -i 's#| Do not raise this |#| Split along stable seams |#' "$wsh/slices/01/halt.1.md"
+plat_sed_i 's#| Do not raise this |#| Split along stable seams |#' "$wsh/slices/01/halt.1.md"
 assert_rc 0 "…and the same halt with a resolving echo emits (the gate asks for a fix it then accepts)" -- \
   "$RECORD" emit "$wsh" --stage impl --nonce nH1 --halt class_u --detail "Q1" --confidence HIGH
 ( . "$RS/lib/state.sh"; state_get "$wsh" gates | command grep -q "gate=claims" ) \
@@ -399,7 +399,7 @@ echo "-- the halt document's PATHS are swept, not just its claims --"
 # half. The question set is the one artifact an owner rules
 # from with no reviewer between, so a dead absolute path in an option's
 # evidence is the claims-echo defect wearing a different coat.
-sed -i 's#^fixture\.$#See /no/such/dir/evidence.md for the ceiling this option rests on.#' "$wsh/slices/01/halt.1.md"
+plat_sed_i 's#^fixture\.$#See /no/such/dir/evidence.md for the ceiling this option rests on.#' "$wsh/slices/01/halt.1.md"
 cp "$wsh/slices/01/halt.1.md" "$wsh/slices/01/halt.2.md"
 activate_stage "$wsh" impl 01 1 nH2
 assert_rc 2 "a halt whose §4 prose cites an absolute path that resolves nowhere is REFUSED at emit" -- \
@@ -409,7 +409,7 @@ assert_out_has "does not resolve" "the refusal is the env sweep's, naming the de
   && ok "the halt document carries an env_sweep attestation on the gates surface" \
   || bad "no gate=env_sweep row for the halt doc"
 # and the fix is the author's one-line edit, accepted by the same door:
-sed -i 's#/no/such/dir/evidence.md#coding-rules.md#' "$wsh/slices/01/halt.2.md"
+plat_sed_i 's#/no/such/dir/evidence.md#coding-rules.md#' "$wsh/slices/01/halt.2.md"
 activate_stage "$wsh" impl 01 1 nH3
 assert_rc 0 "…and the same halt citing a file that resolves emits (repo-relative, the shape a real option cites)" -- \
   "$RECORD" emit "$wsh" --stage impl --nonce nH3 --halt class_u --detail "Q1" --confidence HIGH
@@ -608,7 +608,7 @@ ws2=$(mk_ws "$base" ruletopic "$repo" "$branch")
 out=$( ( set +u; . "$hf" "$ws2" 2>/dev/null; resume_halt_gate ) 2>&1 ); rc=$?
 [ $rc -eq 20 ] && ok "resume without a ruling stays parked (exit 20)" \
   || bad "resume without ruling rc=$rc, want 20"
-printf '%s' "$out" | command grep -q "is required to resume" \
+command grep -q "is required to resume" <<< "$out" \
   && ok "park message names the required action" || bad "no self-describing park message"
 st=$(state_field "$ws2" stage state)
 [ "$st" = "done" ] && ok "stage state untouched while parked" || bad "state mutated to '$st'"
@@ -619,7 +619,7 @@ precond "ruling landed in the rulings surface" \
   bash -c '. "$1/lib/state.sh"; state_get "$2" rulings | command grep -q "slice=00"' _ "$RS" "$ws2"
 precond "ruling archived to slices/00/ruling.1.md" test -s "$ws2/slices/00/ruling.1.md"
 out=$( ( set +u; . "$hf" "$ws2" 2>/dev/null; resume_halt_gate; echo RESUMED ) 2>&1 ); rc=$?
-printf '%s' "$out" | command grep -q RESUMED \
+command grep -q RESUMED <<< "$out" \
   && ok "resume with a ruling clears the halt gate" || bad "resume still parked: rc=$rc $out"
 [ "$(state_field "$ws2" halt resolved)" = "1" ] \
   && ok "halt marked resolved" || bad "halt not resolved"

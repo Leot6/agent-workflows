@@ -103,7 +103,7 @@ out=$(bash -c "set +u; . '$hf' '$wsaw' > /dev/null 2>&1; load_position; do_advan
 [ "$( . "$RS/lib/state.sh"; state_field "$wsaw" halt reason 2>/dev/null)" = "stall_record" ] \
   && ok "park reason stall_record (index integrity, not a liveness class)" \
   || bad "reason: $( . "$RS/lib/state.sh"; state_field "$wsaw" halt reason 2>/dev/null)"
-printf '%s' "$out" | command grep -q "schedulable" \
+command grep -q "schedulable" <<< "$out" \
   && ok "the park says why nothing can run" || bad "detail: $out"
 
 echo "-- ingest stores after=, and the emit-refused shapes park at this door too --"
@@ -399,7 +399,7 @@ corrupt_surface "$ws" slices
 out=$(bash -c "set +u; . '$hf' '$ws' > /dev/null 2>&1; slices_set_status 01 done" 2>&1); rc=$?
 [ $rc -eq 30 ] && ok "corrupt slices surface faults (rc=30, the ferry's store-fault exit), status update not dropped" \
   || bad "rc=$rc — a corrupt index silently swallowed the status update (fault read as absent)"
-printf '%s' "$out" | command grep -qi "fault\|corrupt" \
+command grep -qi "fault\|corrupt" <<< "$out" \
   && ok "the fault names itself" || bad "silent: '$out'"
 
 check_done

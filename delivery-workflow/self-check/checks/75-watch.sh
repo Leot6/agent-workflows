@@ -272,7 +272,7 @@ echo 0 > "$cnt"; echo flat > "$cpu_mode"
 t0=$(vstart)
 out=$(watch_wait "$ws" "$decl" fakesess 1 1 1 1 nonceW2c spec 01 1 "$t0")
 nrow=$(state_get "$ws" ledger 2>/dev/null | command grep 'event=nudge' | tail -1)
-printf '%s\n' "$nrow" | command grep -q 'inject_rc=3 inject_why=composer_occupied' \
+command grep -q 'inject_rc=3 inject_why=composer_occupied' <<< "$nrow" \
   && ok "a refused nudge records WHICH refusal beside its rc (inject_rc=3 inject_why=composer_occupied)" \
   || bad "the nudge row does not carry the refusal reason: [$nrow]"
 pty_inject() { return 0; }
@@ -280,7 +280,7 @@ echo 0 > "$cnt"; echo flat > "$cpu_mode"
 t0=$(vstart)
 out=$(watch_wait "$ws" "$decl" fakesess 1 1 1 1 nonceW2d spec 01 1 "$t0")
 nrow=$(state_get "$ws" ledger 2>/dev/null | command grep 'event=nudge' | tail -1)
-printf '%s\n' "$nrow" | command grep -q 'inject_rc=0 inject_why=-' \
+command grep -q 'inject_rc=0 inject_why=-' <<< "$nrow" \
   && ok "and a SUCCESSFUL nudge records '-' rather than an empty field — a reading, not a gap" \
   || bad "the successful nudge row's reason field is wrong: [$nrow]"
 
@@ -427,7 +427,7 @@ case "$out" in
     bad "outcome '$out' — the counter got there first and the backend's own quota statement was never consulted; the ferry will respawn into a window where nothing can succeed" ;;
   *) bad "outcome '$out' — want PARK backend_quota" ;;
 esac
-printf '%s\n' "$out" | command grep -q 'usage limit reached' \
+command grep -q 'usage limit reached' <<< "$out" \
   && ok "the park detail carries the backend's own sentence verbatim (it names the reset time; the workflow never computes one)" \
   || bad "park line '$out' does not carry the pane's own quota sentence"
 
@@ -464,7 +464,7 @@ case "$out" in
     ok "an empty history read does not retract a decision the visible frame already made ('$out')" ;;
   *) bad "outcome '$out' — the text read overruled the decision; the pane says the backend is out and the ferry respawns anyway" ;;
 esac
-printf '%s\n' "$out" | command grep -q 'not captured' \
+command grep -q 'not captured' <<< "$out" \
   && ok "and the park says the line was not captured rather than inventing one" \
   || bad "park line '$out' — with no text captured the detail must say so"
 _watch_pane_history() { _pty_capture "$1"; }
@@ -520,13 +520,13 @@ case "$out" in
   "FAIL idle"|"FAIL wedged") bad "outcome '$out' — the ferry respawns into a backend that cannot answer; this is the measured defect" ;;
   *) bad "outcome '$out' — want PARK backend_overloaded" ;;
 esac
-printf '%s\n' "$out" | command grep -q '529 Overloaded' \
+command grep -q '529 Overloaded' <<< "$out" \
   && ok "the park detail carries the backend's own banner verbatim" \
   || bad "park line '$out' does not carry the pane's own 529 banner"
 # The one thing that must differ from quota's park text, because it is the one
 # thing an operator acts on: quota forwards a RESET TIME and this state has
 # none to forward. A park line that implied a wait would be inventing it.
-printf '%s\n' "$out" | command grep -q 'no reset time is published' \
+command grep -q 'no reset time is published' <<< "$out" \
   && ok "and it says there is NO clock to wait on (relaunch on judgment — quota's park says the opposite, deliberately)" \
   || bad "park line '$out' — an operator cannot tell this from a quota park, and the two need opposite actions"
 
@@ -558,13 +558,13 @@ nudges_after=$( . "$RS/lib/state.sh"; state_get "$ws" ledger 2>/dev/null | comma
 # stage_timeout is shrunk WITH it: this arm deliberately runs to the outer
 # bound, and an earlier block in this file raised the fixture's timeout to 45s.
 # Riding that costs the suite 45 seconds to prove a 3-second property.
-sed -i 's/^liveness.retry_grace=1$/liveness.retry_grace=9000/' "$ws/config/topic.kv"
+plat_sed_i 's/^liveness.retry_grace=1$/liveness.retry_grace=9000/' "$ws/config/topic.kv"
 printf 'liveness.stage_timeout=3\n' >> "$ws/config/topic.kv"
 out=$(watch_wait "$ws" "$decl" fakesess 1 1 1 1 nonceRT2 spec 01 1 "$(vstart)")
 [ "$out" != "FAIL backend_retrying" ] && [ "$out" != "FAIL idle" ] \
   && ok "inside its grace the ladder is allowed to run ('$out' — the stage timeout still bounds it from outside)" \
   || bad "outcome '$out' — the retry arm fails regardless of its own grace, so the grace is decoration"
-sed -i '/^liveness.retry_grace=/d; /^liveness.stage_timeout=3$/d' "$ws/config/topic.kv"
+plat_sed_i '/^liveness.retry_grace=/d; /^liveness.stage_timeout=3$/d' "$ws/config/topic.kv"
 _pty_capture() { return 1; }
 _watch_pane_history() { return 1; }
 pty_classify_screen() { echo awaiting_input; }
@@ -621,10 +621,10 @@ printf '%s' '{"type":"idle_prompt","message":"waiting for your input"}' \
   && ok "the Notification hook exits 0 (it can only observe, never block the CLI)" \
   || bad "notify_event.sh exited $hrc: $(head -2 "$nev/hook.err")"
 hrow=$(state_get "$nev" notify_events 2>/dev/null || true)
-printf '%s\n' "$hrow" | command grep -q 'session=hooksess type=idle_prompt' \
+command grep -q 'session=hooksess type=idle_prompt' <<< "$hrow" \
   && ok "and the row it writes is the one watch_proto_idle reads (session + type)" \
   || bad "no idle_prompt row on the surface after the hook ran — the producer half is dead, and every arm below would still pass: surface=[$hrow] stderr=[$(head -2 "$nev/hook.err")]"
-printf '%s\n' "$hrow" | command grep -q 'msg=waiting for your input' \
+command grep -q 'msg=waiting for your input' <<< "$hrow" \
   && ok "and it carries the CLI's own message text for the postmortem" \
   || bad "message not recorded: $hrow"
 # a shape the extractor does not know is RECORDED, never dropped (its own rule)
@@ -662,12 +662,12 @@ nevl=$(sc_tmpdir); mkdir -p "$nevl/.runtime/state"
 printf '%s' '{"session_id":"b2afee95-848d-4a5a-b8bc-f0de71d13ed4","transcript_path":"/home/x/b2afee95.jsonl","cwd":"/home/x/delivery","prompt_id":"c5ef4167-b97f-451f-902e-268d74836e86","hook_event_name":"Notification","message":"Claude is waiting for your input","notification_type":"idle_prompt"}' \
   | bash "$RS/session/notify_event.sh" "$nevl" measuredsess > /dev/null 2>&1
 mrow=$(state_get "$nevl" notify_events 2>/dev/null || true)
-printf '%s\n' "$mrow" | command grep -q 'session=measuredsess type=idle_prompt type_src=field' \
+command grep -q 'session=measuredsess type=idle_prompt type_src=field' <<< "$mrow" \
   && ok "the MEASURED live payload classifies from its FIELD (notification_type) — type_src=field" \
   || bad "the measured payload did not classify from its field: [$mrow]"
 # And `hook_event_name":"Notification"` in the same payload must not answer:
 # the value class is lowercase precisely so a capitalised event name cannot.
-printf '%s\n' "$mrow" | command grep -qv 'type=Notification' \
+command grep -qv 'type=Notification' <<< "$mrow" \
   && ok "and the capitalised hook_event_name did not answer for it" \
   || bad "the event name was read as the type: [$mrow]"
 
@@ -679,13 +679,13 @@ printf '%s\n' "$mrow" | command grep -qv 'type=Notification' \
 # validation-debt rows recorded "no instrument" for evidence that was
 # addressable all along. Keeping the path is what makes it resolvable per
 # session rather than guessable from cwd and timing.
-printf '%s\n' "$mrow" | command grep -qF 'transcript=/home/x/b2afee95.jsonl' \
+command grep -qF 'transcript=/home/x/b2afee95.jsonl' <<< "$mrow" \
   && ok "the measured payload's transcript_path is kept on the row" \
   || bad "transcript_path was dropped from the row: [$mrow]"
 # ORDERING is load-bearing and is asserted, not assumed: `msg` carries the
 # CLI's own sentence and therefore spaces, so it must stay LAST or a
 # field-scanning reader loses everything after it.
-printf '%s\n' "$mrow" | command grep -qE 'transcript=[^ ]+ msg=' \
+command grep -qE 'transcript=[^ ]+ msg=' <<< "$mrow" \
   && ok "…and it sits BEFORE msg, which must stay last because it carries spaces" \
   || bad "field order broken — msg is no longer last: [$mrow]"
 # Absent field -> the honest value, the same word msg uses. The degraded
@@ -702,10 +702,10 @@ state_get "$nevt" notify_events 2>/dev/null | command grep -q 'transcript=none' 
 printf '%s' '{"transcript_path":"/home/x/a b.jsonl","hook_event_name":"Notification","message":"Claude is waiting for your input","notification_type":"idle_prompt"}' \
   | bash "$RS/session/notify_event.sh" "$nevt" spacetrans > /dev/null 2>&1
 srow=$(state_get "$nevt" notify_events 2>/dev/null | command grep 'session=spacetrans' | tail -1)
-printf '%s\n' "$srow" | command grep -q 'transcript=none' \
+command grep -q 'transcript=none' <<< "$srow" \
   && ok "a whitespace-bearing transcript_path is refused to 'none' (a row field is space-delimited)" \
   || bad "a path with a space was written into the row: [$srow]"
-printf '%s\n' "$srow" | command grep -qF 'msg=Claude is waiting for your input' \
+command grep -qF 'msg=Claude is waiting for your input' <<< "$srow" \
   && ok "…and the fields after it survive intact, which is what the guard is for" \
   || bad "the space-bearing path corrupted the row: [$srow]"
 
@@ -716,10 +716,10 @@ printf '%s\n' "$srow" | command grep -qF 'msg=Claude is waiting for your input' 
 printf '%s' '{"hook_event_name":"Notification","message":"Claude is waiting for your input"}' \
   | bash "$RS/session/notify_event.sh" "$nevl" livesess > /dev/null 2>&1
 lrow=$(state_get "$nevl" notify_events 2>/dev/null || true)
-printf '%s\n' "$lrow" | command grep -q 'session=livesess type=idle_prompt type_src=message' \
+command grep -q 'session=livesess type=idle_prompt type_src=message' <<< "$lrow" \
   && ok "a payload with NO type field still classifies from its message text — type_src=message (the degraded path)" \
   || bad "the type-less payload did not classify: [$lrow]"
-printf '%s\n' "$lrow" | command grep -qF 'msg=Claude is waiting for your input' \
+command grep -qF 'msg=Claude is waiting for your input' <<< "$lrow" \
   && ok "and its message text still survives intact for the postmortem" \
   || bad "the live message text was not preserved: [$lrow]"
 # The consequence the whole path exists for. Before the message source landed,
@@ -869,7 +869,7 @@ precond "the sweep found clocks to check (saw: $(printf '%s' "$clocks" | tr '\n'
 unshifted=""
 for c in $clocks; do
   case " $WATCH_AMNESTY_EXEMPT " in *" $c "*) continue ;; esac
-  printf '%s\n' "$amnesty" | command grep -qE "\b$c=\\\$\(\($c \+ gap\)\)" || unshifted="$unshifted $c"
+  command grep -qE "\b$c=\\\$\(\($c \+ gap\)\)" <<< "$amnesty" || unshifted="$unshifted $c"
 done
 [ -z "$unshifted" ] \
   && ok "every non-exempt clock compared against now is shifted by the amnesty ($(printf '%s' "$clocks" | tr '\n' ' ')— exempt: $WATCH_AMNESTY_EXEMPT)" \
@@ -878,7 +878,7 @@ done
 # must leave it, or the list rots behind a comment nobody re-reads.
 stale=""
 for e in $WATCH_AMNESTY_EXEMPT; do
-  printf '%s\n' "$wbody" | command grep -qE "now - $e\b" || stale="$stale $e"
+  command grep -qE "now - $e\b" <<< "$wbody" || stale="$stale $e"
 done
 [ -z "$stale" ] \
   && ok "and every exemption still names a clock this function actually compares" \
@@ -889,7 +889,7 @@ kb_amn="$amnesty"
 kb_unshifted=""
 for c in $(printf '%s\n[ $((now - ghost_since)) -gt 1 ]\n' "$kb" | command grep -oE 'now - [a-z_]+' | sed 's/^now - //' | sort -u); do
   case " $WATCH_AMNESTY_EXEMPT " in *" $c "*) continue ;; esac
-  printf '%s\n' "$kb_amn" | command grep -qE "\b$c=\\\$\(\($c \+ gap\)\)" || kb_unshifted="$kb_unshifted $c"
+  command grep -qE "\b$c=\\\$\(\($c \+ gap\)\)" <<< "$kb_amn" || kb_unshifted="$kb_unshifted $c"
 done
 [ "$kb_unshifted" = " ghost_since" ] \
   && ok "known-bad: a newly added clock that the amnesty does not shift is caught by name" \

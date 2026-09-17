@@ -16,6 +16,11 @@ architecture §1). Nothing at this root is required by either tree.
 The boundary between them is a single artifact: `<topic>/plan.md`, produced
 by planning, consumed by delivery. Each workflow's own README is its map.
 
+**Hosts**: Linux (Ubuntu/Debian) and macOS, both first-class — bash ≥ 4 and
+tmux on either (macOS: `brew install bash tmux`); every other host difference
+lives in `delivery-workflow/runtime-scripts/lib/platform.sh`. Both trees'
+self-checks run on both hosts in CI (`.github/workflows/self-check.yml`).
+
 ## The deployment layer (this root)
 
 Four items live outside both trees **on purpose** — anything inside a tree

@@ -54,7 +54,7 @@ tsv_totality() { # rows on stdin -> violation lines on stdout
         || echo "($s) maps verdict '$v' not in its closed vocabulary '$verdicts'"
       case "$tgt" in
         HALT_class_u|HALT_blocked|COMPLETE|slice_loop|next_slice) : ;;
-        *) printf '%s\n' "$STAGES" | command grep -qxF "$tgt" \
+        *) command grep -qxF "$tgt" <<< "$STAGES" \
              || echo "($s, $v) -> '$tgt' is neither a stage nor a terminal" ;;
       esac
     done
@@ -65,10 +65,10 @@ viol=$(rows | tsv_totality)
   || bad "totality violations: $viol"
 # non-vacuity: a fabricated broken row must be flagged in both directions
 viol=$(printf 'ghost\tslice\tcold\tx;handoff\tgood|dangling\tgood:nowhere\tR=cards/author.md\t\n' | tsv_totality)
-printf '%s\n' "$viol" | command grep -q "dangling" \
+command grep -q "dangling" <<< "$viol" \
   && ok "validator catches an unmapped verdict (known-bad fires)" \
   || bad "validator MISSED an unmapped verdict — vacuous totality check"
-printf '%s\n' "$viol" | command grep -q "nowhere" \
+command grep -q "nowhere" <<< "$viol" \
   && ok "validator catches a dangling target (known-bad fires)" \
   || bad "validator MISSED a dangling next-target"
 
@@ -160,16 +160,13 @@ check_manifest() { # row tplfile -> violations
     # defect: 141 does not mean the matcher failed, it means the matcher RAN,
     # MATCHED and exited first, and printf took SIGPIPE — pipefail then hands the
     # pipeline the producer's status. Reporting it as a matcher failure would
-    # have inverted the truth on first contact. It is not reachable HERE — $names
-    # measures 175-256 bytes over the 14 invocations of a full run, against a
-    # ~64 KiB pipe-buffer floor — and the arm exists for the case where somebody
-    # widens what this function reads.
-    #
-    # Since assert_out_has dropped its pipe, this is the ONLY site in the suite
-    # that captures the status and classifies it; the remaining piped sites still
-    # convert whatever they get into a verdict silently. That is an argument for
-    # keeping this arm, not for widening it.
-    printf '%s\n' $names | command grep -qxF "$p"; _cm_rc=$?
+    # have inverted the truth on first contact. It was believed unreachable
+    # here — $names is only 175-256 bytes — and then FIRED, three times in one
+    # run: bash's printf writes once per argument, so an early match ends grep
+    # while later arguments are still being written, whatever the total size.
+    # The producer is therefore a here-string (written before grep starts), and
+    # the arm stays for whoever turns it back into a pipe.
+    command grep -qxF "$p" <<< "$(printf '%s\n' $names)"; _cm_rc=$?
     case $_cm_rc in
       0) : ;;
       1) echo "template $(basename "$2") placeholder {$p} has no manifest/global entry" ;;
@@ -198,7 +195,7 @@ done < <(rows)
 badtpl=$(sc_tmpdir)/x.md
 printf '{ROLE_CARD} {BOGUS_ITEM}\n' > "$badtpl"
 viol=$(check_manifest "$(rows | head -1)" "$badtpl")
-printf '%s\n' "$viol" | command grep -q "BOGUS_ITEM" \
+command grep -q "BOGUS_ITEM" <<< "$viol" \
   && ok "validator catches an undeclared placeholder (known-bad fires)" \
   || bad "placeholder validator vacuous — {BOGUS_ITEM} not flagged"
 
@@ -244,7 +241,7 @@ done < <(rows)
 docbad=$(sc_tmpdir)/doc.md
 printf 'goals: per `operations.md` §8.\n' > "$docbad"
 onerow=$(rows | awk -F'\t' '$1=="spec"')
-printf '%s\n' "$(check_docs "$onerow" "$docbad")" | command grep -q 'operations.md' \
+command grep -q 'operations.md' <<< "$(check_docs "$onerow" "$docbad")" \
   && ok "doc-citation validator fires on a cited-but-unhanded workflow doc (known-bad)" \
   || bad "doc-citation validator vacuous — a template citing \`operations.md\` against spec's row was not flagged"
 fixedrow=$(printf '%s\n' "$onerow" | awk -F'\t' 'BEGIN{OFS="\t"} {$7=$7";OPS=operations.md"; print}')
@@ -303,7 +300,7 @@ pkeys=$(command grep -rhoE 'project_get "\$[A-Za-z_]+" [a-z][A-Za-z0-9_.]*' "$RS
 npk=0
 for k in $pkeys; do
   npk=$((npk + 1))
-  printf '%s\n' "$p3" | command grep -qF "$k" \
+  command grep -qF "$k" <<< "$p3" \
     || bad "project.kv key '$k' is read by the scripts but never appears in config-and-adapters §3 (an undocumented adapter key)"
 done
 precond "grep derived N>=6 literal project.kv keys (saw $npk)" test "$npk" -ge 6
@@ -334,7 +331,7 @@ sub=$(printf 'design/architecture.md\nruntime-docs/review-standards.md\n' | scop
   && ok "a formal-doc-only change selects a subset ($(printf '%s' "$sub" | tr '\n' ' '))" \
   || bad "doc-only change did not select a subset — the gate is all-or-nothing again"
 for name in xref closure verbs gates provenance-tags; do
-  printf '%s\n' "$sub" | command grep -qxF "$name" \
+  command grep -qxF "$name" <<< "$sub" \
     && ok "  subset includes $name (it reads the formal doc region)" \
     || bad "  subset LACKS $name, which greps design/ or runtime-docs/"
 done
@@ -676,8 +673,8 @@ command grep -q 'plan.02.md' "$outd/pspec.md.inputs" \
 
 echo "-- the learning loop has its reader: close-out receives observations + learnings --"
 corow=$(command grep -v '^#' "$WF_ROOT/config/stages.tsv" | awk -F'\t' '$1=="close-out"')
-printf '%s' "$corow" | command grep -q 'OBSERVATIONS=observations' \
-  && printf '%s' "$corow" | command grep -q 'LEARNINGS=learnings' \
+command grep -q 'OBSERVATIONS=observations' <<< "$corow" \
+  && command grep -q 'LEARNINGS=learnings' <<< "$corow" \
   && ok "close-out manifest hands over observations + learnings (its prompt owes tidying them — a write-only surface is a landfill, not a loop)" \
   || bad "close-out manifest lacks observations/learnings: the stage is ordered to tidy material it never receives"
 ( . "$RS/lib/state.sh"
@@ -705,7 +702,7 @@ precond "registry extraction sees N>=15 surfaces (saw $nreg)" test "$nreg" -ge 1
 s1=$(sed -n '/^## 1\./,/^## 2\./p' "$WF_ROOT/design/state-and-liveness.md")
 missing_s=""
 for s in $reg; do
-  printf '%s\n' "$s1" | command grep -q "\`$s\`" || missing_s="$missing_s $s"
+  command grep -q "\`$s\`" <<< "$s1" || missing_s="$missing_s $s"
 done
 [ -z "$missing_s" ] \
   && ok "every registry surface is enumerated in state-and-liveness §1 (the authority names what the machine holds)" \
@@ -754,10 +751,10 @@ lit=$(command grep -rl 'role=[^ ]* name=[^ ]* pane_pid=' "$RS" 2>/dev/null || tr
 # …and the constructor's own output still matches what rec_field reads.
 row=$( . "$RS/lib/state.sh"; state_sessions_row author sess-x 11 22 33 44 /tmp/s nonceX warm claude )
 for k in role name pane_pid pane_start server_pid server_start socket nonce mode backend t; do
-  printf '%s\n' "$row" | command grep -qE "(^| )$k=[^ ]+( |$)" \
+  command grep -qE "(^| )$k=[^ ]+( |$)" <<< "$row" \
     || bad "the constructor drops '$k' — a reader asking for it gets nothing"
 done
-printf '%s\n' "$row" | command grep -qE '(^| )backend=claude( |$)' \
+command grep -qE '(^| )backend=claude( |$)' <<< "$row" \
   && ok "every field a reader asks for is present, backend included ($(printf '%s' "$row" | wc -w) fields)" \
   || bad "constructor output: $row"
 

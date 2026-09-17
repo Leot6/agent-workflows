@@ -54,7 +54,7 @@ gates_dirty_fp() { # repo -> 8-char fingerprint
     # stat dropped the file from the fingerprint entirely.
     git -C "$1" status --porcelain -z 2>/dev/null \
       | tr '\0' '\n' | awk 'sub(/^\?\? /,"")' \
-      | while IFS= read -r uf; do stat -c '%n %s %Y' "$1/$uf" 2>/dev/null; done
+      | while IFS= read -r uf; do plat_stat_nsm "$1/$uf"; done
   } | md5sum | cut -c1-8
 }
 
@@ -131,7 +131,7 @@ gates_caps() { # workspace file...
     key=$(_gates_cap_for_file "$f")
     out=$(_gates_cap "$ws" "$key") || { echo "FAULT: cap '$key' unresolvable" >&2; return 3; }
     cap=${out%%	*}; src=${out#*	}
-    lines=$(wc -l < "$f")
+    lines=$(( $(wc -l < "$f") ))
     if [ "$lines" -gt "$cap" ]; then
       echo "cap_exceeded: file=$f lines=$lines cap=$key=$cap source=$src"
       fails="$fails $f:$lines>$key=$cap($src)"
@@ -224,7 +224,7 @@ gates_env_sweep() { # workspace artifact
       continue
     fi
     if [ -n "$nn" ] && [ -f "$file" ] && [ "$nn" -gt "$(wc -l < "$file")" ]; then
-      echo "env sweep: '$tok' pins line $nn but $file has $(wc -l < "$file") lines"
+      echo "env sweep: '$tok' pins line $nn but $file has $(( $(wc -l < "$file") )) lines"
       failed=1
     fi
   done < <(_gates_strip_fences "$art" \

@@ -155,11 +155,35 @@ corrupt_surface "$aws" audit
 out=$(state_audit "$aws" tester "note that must not vanish" 2>&1); rc=$?
 [ $rc -eq 0 ] && ok "state_audit still returns 0 (best-effort contract kept — callers never die on it)" \
   || bad "state_audit rc=$rc on a corrupt surface"
-printf '%s' "$out" | command grep -q "audit append FAILED" \
+command grep -q "audit append FAILED" <<< "$out" \
   && ok "the loss is named on stderr (pre-fix: fully swallowed)" \
   || bad "audit append loss is still silent: '$out'"
-printf '%s' "$out" | command grep -q "note that must not vanish" \
+command grep -q "note that must not vanish" <<< "$out" \
   && ok "the lost note text rides in the stderr line (recoverable from the log)" \
   || bad "lost note text absent from the failure line"
+
+echo "-- an early-exiting reader never turns a present surface into a failed read --"
+# `state_get … | grep -q` under pipefail: grep exits on its first match, and a
+# body larger than the pipe buffer (16K on macOS, 64K on Linux) SIGPIPEs the
+# writer, so the pipeline read a present record as absent. Sized well past
+# both buffers, and the match is on the FIRST line — the earliest exit there is.
+pws=$(mk_ws "$(sc_tmpdir)" pipetopic "$(sc_tmpdir)" main)
+for i in $(seq 1 3000); do printf 'gate=g%s result=PASS padding-padding-padding-padding\n' "$i"; done \
+  | state_set "$pws" gates gate > /dev/null
+precond "the surface outruns every pipe buffer (saw $(( $(state_get "$pws" gates | wc -c) )) bytes)" \
+  test "$(( $(state_get "$pws" gates | wc -c) ))" -gt 70000
+miss=0
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  ( set -o pipefail; state_get "$pws" gates | command grep -q 'gate=g1 ' ) || miss=$((miss + 1))
+done
+[ "$miss" -eq 0 ] \
+  && ok "ten first-line matches through a pipe all read as present (a reader stopping early is not a store fault)" \
+  || bad "$miss of 10 early-exit reads of a present surface failed under pipefail"
+# rc compared exactly, never `&& bad || ok`: a 141 must read as a failure here.
+( set -o pipefail; state_get "$pws" gates | command grep -q 'gate=no-such ' ); rc=$?
+[ $rc -eq 1 ] \
+  && ok "…and a row that is not there still reads as absent, rc 1 (the reader's verdict is kept)" \
+  || bad "an absent row read through the pipe returned rc=$rc, want 1"
+assert_rc 1 "an absent surface still returns rc 1 through the same write path" -- state_get "$pws" nosuch
 
 check_done

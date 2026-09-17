@@ -36,7 +36,7 @@ while IFS= read -r doc; do
   fi
   limit=${CAP[$c]:-}
   if [ -z "$limit" ]; then bad "$rel maps to $c, which has no §defaults row"; continue; fi
-  lines=$(wc -l < "$doc")
+  lines=$(( $(wc -l < "$doc") ))
   n=$((n + 1))
   [ "$lines" -le "$limit" ] \
     && ok "$rel $lines/$limit ($c)" \
