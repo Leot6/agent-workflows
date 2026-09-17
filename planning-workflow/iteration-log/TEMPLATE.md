@@ -1,6 +1,7 @@
 # <id> — <one-line hook>
 
-- **source**: topic + rounds (member obs ids)
+- **source**: topic alias + rounds (member obs ids) — public text: the mechanism,
+  never the project (A§11); no names, paths or delivered-repository SHAs
 - **observation**: what the workflow did/failed to do, as seen (diagnosis-free)
 - **suspected mechanism**: the one-line hypothesis of WHY
 - **falsifiable expectation**: REQUIRED — what future event proves/disproves the

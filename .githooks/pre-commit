@@ -1,0 +1,5 @@
+#!/bin/sh
+# pre-commit — refuse a commit whose added lines or paths carry private data
+# (privacy_scan.sh at the repo root: built-in shapes + the local denylist).
+# Enabled by `git config core.hooksPath .githooks` (README, Repo conventions).
+exec "$(git rev-parse --show-toplevel)/privacy_scan.sh" --staged

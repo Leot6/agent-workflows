@@ -304,6 +304,24 @@ still resolves; `25-xref` is what holds that true.
   was printed. Dropping it would not make the tax verifiable — it would delete
   the measurement.
 
+- **this tree is public and project-agnostic, and every lesson crosses that
+  boundary on its way in.** the workflow learns from private projects; what may
+  enter the tree is the MECHANISM — what the workflow did, why, what now guards
+  it — never the PROJECT: no company, project, repository, branch, module,
+  path, host, internal-tool or people names; no commit SHAs of a delivered
+  repository (a reader of this tree can never open them); no pasted artifact
+  text; no machine paths or accounts. a topic is named by a neutral alias
+  (`topic-A`, stable within one harvest), and the alias → topic map and the
+  evidence itself stay in the deployment's private archive, beside the topic
+  trees. test, the same shape as the next bullet's: *would this sentence mean
+  the same to someone who has never seen that project?* if it needs the
+  project to be understood, it is the project's text and it stays out. the
+  same boundary holds for dependencies: a project reaches the tree only through
+  its topic's `project.kv`; a convention of one project written into this tree
+  (a trailer, a branch name, a lint tool) is a leak of the other kind. the
+  deployment's pre-commit scan is the mechanical half and knows only the words
+  it is given — add a topic's own names to the local denylist before
+  harvesting it.
 - **a maintenance commit introduces no token that only the working material
   resolves.** Test, and it is the whole rule: *remove the tag — does the
   sentence still stand?* `standing-watch machinery — 5 scripts, W-9/W-10` does;
@@ -439,10 +457,10 @@ still resolves; `25-xref` is what holds that true.
   worktree is the one shape that is both isolated and mergeable. **commit early in
   the worktree — the branch is the durable queue** (`git log master..<branch>` is
   the outstanding list), the worktree directory is a consumable. one check after
-  the first commit: `core.hooksPath=.githooks` is a RELATIVE path and resolves
-  inside each linked worktree, so confirm the commit carries a Change-Id — a
-  silently skipped `commit-msg` hook in a linked worktree is a known trap here,
-  and a batch of Change-Id-less commits only surfaces at merge time.
+  the first commit: a RELATIVE `core.hooksPath` resolves inside each linked
+  worktree, so confirm the checkout's hooks ran on it — a hook silently skipped
+  in a linked worktree is a known trap, and a batch of commits that bypassed
+  it only surfaces at merge time.
 - **every owner park is a landing window, but not every park qualifies.** the
   watchdog never restarts a park, so nothing pulls the topic back up mid-landing;
   the interruption the window lives on is already paid for. the classes are a

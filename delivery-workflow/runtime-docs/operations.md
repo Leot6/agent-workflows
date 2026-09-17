@@ -419,8 +419,9 @@ after concurrence. hard invariants, never violated:
    history, not about a branch name — measured: "full gates re-run at the new
    tip, invariant discharged" was written of a history that a shared-branch
    rewrite had replaced minutes later, and nothing downstream could tell.
-5. Change-Ids preserved on kept commits; squashed groups get fresh ones via the
-   vendored commit-msg hook; no trailers beyond what `project.kv` declares.
+5. the trailers `project.kv` declares (`commit.trailers`) preserved on kept
+   commits; squashed groups get fresh ones the way the project generates them
+   (its commit hook); no trailers beyond what `project.kv` declares.
 6. old→new map recorded in `closeout.md`; push stays the owner's.
 7. **each new subject covers the union of the diffs it now owns.** invariants
    1-6 are all SHAPE checks, and the byte-identity of 3 cannot see this one:
@@ -434,7 +435,7 @@ after concurrence. hard invariants, never violated:
    invalidates them.** run `iteration-log/cite-check.sh <repo>` after the tip is
    rebuilt: an entry or validation-debt row anchored on a SHA this rewrite took
    off the branch is now an argument nobody can open. measured over three
-   topics and three consolidations — twenty cited commits off `develop`, six on
+   topics and three consolidations — twenty cited commits off the delivered branch, six on
    no ref at all, none of it red at the time.
 
 non-interactive recipe (no interactive rebase in this environment), commits

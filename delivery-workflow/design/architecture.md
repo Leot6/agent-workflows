@@ -544,7 +544,8 @@ the amended text where cited):
   advisory check.
 - **One commit convention for both checkouts** (D-iv): `commit.*` is the
   project's, not the repo's — a doc commit-unit re-passes the same subject
-  regex and trailer policy, so the doc checkout wires the same commit-msg hook.
+  regex and trailer policy, so the doc checkout wires whatever commit hook the
+  project does.
 - **Evidence resolves through the binding, never a project default**: owed
   cu→SHA ancestry, gate attestation pins, the fix baseline and the progress
   registration wall all read the ACTIVE slice's checkout (two-layer resolution

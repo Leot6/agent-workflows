@@ -206,7 +206,7 @@ proven versus promised.
 | named-cap-exceedance | any cap exceeded → the emit-time gate refusal names the cap, the value, and the source layer (author-fixable in-session; no park — self-heal-first); the workflow's own tree is swept against its declared caps by self-check | 60-gates (incl. own-tree sweep); 20-config |
 | notify-hot-policy | a notify policy change mid-run → the next event obeys it without relaunch | 65-notify |
 | notify-mechanical-predicate | a notification decision → inputs are event type + reason class only, both closed enums | 65-notify |
-| workflow-source-rollback | a bad workflow-source change → deliberate guarded git restore; discussion, plans and .runtime never committed; project commit conventions via the vendored hook | dev-time procedure (config-and-adapters.md §4) |
+| workflow-source-rollback | a bad workflow-source change → deliberate guarded git restore; discussion, plans and .runtime never committed; the workflow holds no project's commit convention | dev-time procedure (config-and-adapters.md §4) |
 | config-fallthrough | an unset key → falls through the three levels; unset everywhere = workflow default, never an error | 20-config |
 | parallel-config-safety | two topics running → defaults are read-only, overrides live under each topic's own tree; an override addressing a retired slice id faults loudly | 20-config |
 | project-adapter-required | a missing project.kv → refuse to start, self-describing | 20-config |

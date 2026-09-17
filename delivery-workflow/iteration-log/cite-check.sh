@@ -7,7 +7,7 @@
 # rewrites a range, the old SHAs leave the branch, and the entry that rests its
 # whole argument on one now points at nothing. Nothing red at the time it
 # happened. Measured 2026-09-08 over three topics and three consolidations —
-# twenty cited commits off `develop`, six of them on NO REF AT ALL, reachable
+# twenty cited commits off the delivered branch, six of them on NO REF AT ALL, reachable
 # only while a reflog entry survived (default gc.reflogExpireUnreachable: 30
 # days; three of the six were 26 days old when this was written). Three of those
 # six were the whole evidentiary basis of one closed validation-debt row.

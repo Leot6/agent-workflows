@@ -7,3 +7,7 @@
 
 # Local Claude Code settings (per-machine, never shared).
 .claude/settings.local.json
+
+# Private words the privacy scan refuses (privacy_scan.sh) — never committed:
+# a list of private names is itself private.
+.privacy-denylist

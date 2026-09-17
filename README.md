@@ -23,7 +23,7 @@ self-checks run on both hosts in CI (`.github/workflows/self-check.yml`).
 
 ## The deployment layer (this root)
 
-Four items live outside both trees **on purpose** — anything inside a tree
+Five items live outside both trees **on purpose** — anything inside a tree
 that referenced a sibling would break that tree's standalone promise, so the
 cross-tree machinery sits here, referencing both trees while neither tree
 references back:
@@ -52,6 +52,9 @@ references back:
   script is that promise's mechanical carrier: it diffs the twins' factual
   halves (composer literal, quota regex, glob-quoting rule) and reports —
   each tree's own probe stays the semantic authority.
+- `privacy_scan.sh` — the guard that keeps this repository public. Both trees
+  learn from private work, so nothing a real project teaches may enter them in
+  that project's words: see *Public and project-agnostic* below.
 - `collect_watch.sh` — planning's park-on-dispatch rule (protocol §4.5)
   parks the author after instruments are launched; this watcher polls for
   spawn.sh's `.done` sentinels and notifies (or auto-collects), so a parked
@@ -79,14 +82,44 @@ the `.gitkeep`:
 - `workflows/discussion/` — scratch for **cross-tree** work (the overhaul
   review rounds, architecture discussions, signing notes that span both).
 
+## Public and project-agnostic
+
+The trees are maintained in public and are used against private projects, so
+every lesson crosses a boundary on its way in. What may cross is the
+**mechanism** — what the workflow did, why, and what now guards it. What may
+not is the **project**: company, project, repository, branch, module, path,
+host, internal-tool and people names; commit SHAs of a delivered repository;
+pasted artifact text; machine paths and accounts. A topic is named by a
+neutral alias (`topic-A`); the alias → topic map, and the evidence itself,
+stay in the deployment's own private archive. The same holds for
+dependencies: a tree reads a project only through that topic's `project.kv`,
+never through a convention written into the tree.
+
+Two halves enforce it:
+
+- **writing** — each tree's maintenance rules (delivery `maintenance.md` §1,
+  planning A§11) and its iteration-log templates;
+- **mechanics** — `privacy_scan.sh`: built-in shapes that are private anywhere
+  (home paths, e-mail addresses, credentials, private network addresses),
+  plus the words only you know are private, one regex per line, in
+  `.privacy-denylist` (gitignored) or
+  `${XDG_CONFIG_HOME:-~/.config}/workflows/privacy-denylist`. It runs on
+  staged changes (pre-commit), on every commit message (commit-msg), and over
+  the whole tree in CI (built-in shapes only — CI never sees your denylist).
+  Before a harvest, add the topic's own names to your denylist first.
+
 ## Repo conventions
 
-- `.githooks/commit-msg` — Gerrit-style Change-Id hook (the delivery
-  workflow's project commit convention). If you received these trees as
-  plain files, make them a repository first (`git init`, then commit the
-  tree) and point git at the hook: `git config core.hooksPath .githooks`.
-  The delivery workflow's rollback discipline assumes a repo — the export
-  alone has none.
+- **Enable the hooks once per clone**: `git config core.hooksPath .githooks`
+  (`pre-commit` and `commit-msg` both run `privacy_scan.sh`).
+- **Commit messages**: a subject of at most 72 characters; an optional body,
+  after a blank line, of at most 8 lines of at most 72 characters — what
+  changed and why, the detail stays in the tree. No attribution trailers
+  (`Co-Authored-By`, session links, `Signed-off-by`): the author field is the
+  attribution. `commit-msg` enforces it, and CI checks every commit. If you received
+  these trees as plain files, make them a repository first (`git init`, then
+  commit the tree). The delivery workflow's rollback discipline assumes a
+  repo — the export alone has none.
 - Commits to either tree follow that tree's maintenance rules (planning
-  A§11; delivery operations §7): single-purpose, self-check green, no edits
-  while a live stage runs.
+  A§11; delivery `maintenance.md` §1): single-purpose, self-check green, no
+  edits while a live stage runs.

@@ -7,6 +7,11 @@
   is the prose. A landing, a correction, a status change: edit THIS file, then
   run `iteration-log/gen-index.sh` (97-iterlog reds a stale INDEX).
 
+  PUBLIC TREE (`runtime-docs/maintenance.md` §1): write the mechanism, never the
+  project. A topic is a neutral alias (`topic-A`); no project, repository,
+  module, path, host, tool or people names, and no commit SHAs of a delivered
+  repository. The alias map and the evidence stay in the private archive.
+
   Head block — a fenced ```entry block right under the H1, one `key: value` per
   line, every value on ONE line (a `|` is fine; the generator escapes it):
 
@@ -14,7 +19,7 @@
               commit) | closed (evidence landed or refuted; the file STAYS —
               git history is not a home)
     hook      one line: what the workflow did or failed to do, and why it matters
-    anchors   where seen, ENUMERATED: `topic: t=` stamps (a stamp shared by two
+    anchors   where seen, ENUMERATED: `topic-alias: t=` stamps (a stamp shared by two
               records is written `<stamp>(rec N)` — a stamp is not an identity),
               and it need not open with a number — most heads do not; the total
               is the body field's job,
@@ -83,7 +88,7 @@
 ```entry
 status: open
 hook: <one line: what happened and why it matters>
-anchors: 1 — <topic>: <t= stamp or construct>
+anchors: 1 — <topic-alias>: <t= stamp or construct>
 landing: -
 ```
 

@@ -7,6 +7,9 @@
 > at retro, never mid-topic. Every ingested observation id is reachable from
 > this file (family-row anchor columns or the index list below).
 >
+> Public text (A§11): topics appear by neutral alias, findings in mechanism
+> terms; the alias map and the evidence stay in the deployment's archive.
+>
 > A retro ingest that raises a family's anchor count declares itself with a
 > `Retro-ingest:` commit trailer (protocol §4.11.7); `99-anchor-writes` reds
 > any other commit that does.

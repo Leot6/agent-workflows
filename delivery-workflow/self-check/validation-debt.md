@@ -27,6 +27,9 @@
 > harvest touches a row that an open `iteration-log/` entry names, add that
 > entry's id to the row. The link is for navigation, not de-duplication.
 >
+> Rows are public text: mechanism terms only, topics by alias, no project
+> names or delivered-repository SHAs (`runtime-docs/maintenance.md` §1).
+>
 > Open rows count against `maintenance.vd_open_cap` (`check.sh` prints a WARN
 > over it); the count and the worklist both stop at the first `##` heading
 > below.

@@ -241,8 +241,8 @@ Aggregation across topics stays manual in v2.0 (stated, not tooled).
 Topic close-out: ledger settlement into `closeout.md`; consolidation (squash curation) as a
 Class C proposal under v1's hard invariants carried verbatim — backup ref first;
 adjacent-only squashes, no reorder; `git diff backup..new-tip` empty (byte-identical);
-full gates re-run at the new tip; subjects re-pass the project regex; Change-Ids preserved
-on kept commits, fresh on squashed groups; old→new map recorded; push stays the owner's.
+full gates re-run at the new tip; subjects re-pass the project regex; declared trailers
+preserved on kept commits, regenerated on squashed groups; old→new map recorded; push stays the owner's.
 Non-interactive cherry-pick recipe (no `rebase -i` in this environment) in
 `operations.md`. Retracted slices: `launch.sh slice <id> cancelled` makes them
 unschedulable by status; a restored slice re-derives its premise from scratch.

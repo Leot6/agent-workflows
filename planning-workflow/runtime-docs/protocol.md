@@ -74,7 +74,7 @@
 | `DOC_CAP_CLAIMS` | 400 | lines | `claims.md` |
 | `DOC_CAP_PROMPT` | 300 | lines | each file under `prompts/` |
 | `DOC_CAP_TEMPLATE` | 200 | lines | each file under `templates/` |
-| `DOC_CAP_ARCH` | 818 | lines | `design/architecture.md` (800→806 self-readings/class/ruler insertions; →810 the directory-form surgery's tree-map and concatenation-contract lines; →816 the landing-record write grant and the entry-line item slot, each with its ceiling row; →817 the dispatch-watch + restart-line-delivery ceiling row; →818 the owner-initiated-ruling-entry ceiling row) |
+| `DOC_CAP_ARCH` | 821 | lines | `design/architecture.md` (800→806 self-readings/class/ruler insertions; →810 the directory-form surgery's tree-map and concatenation-contract lines; →816 the landing-record write grant and the entry-line item slot, each with its ceiling row; →817 the dispatch-watch + restart-line-delivery ceiling row; →818 the owner-initiated-ruling-entry ceiling row; →821 the public-tree rule in A§11) |
 | `DOC_CAP_RATIONALE` | 300 | lines | `design/rationale.md` |
 | `DOC_CAP_README` | 100 | lines | `README.md` |
 | `COMMIT_CAP` | 500 | changed lines | one workflow-tree commit (single-purpose; bootstrap/import commits exempt, marked in the message) |

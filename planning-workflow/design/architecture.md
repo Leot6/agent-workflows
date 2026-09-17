@@ -670,6 +670,9 @@ evidence, `rationale.md`); **git is the rollback path** for this tree; doc-cap
 conformance is a rung-2 emit row for workflow-file edits (§7). Release
 rounds on this tree take the **complete tree** as the review unit
 (measured: subset reviews yield a constant finding rate — `rationale.md` §4).
+**This tree is public and project-agnostic**: retro ingests the mechanism,
+never the project — topics by neutral alias, no project, repository, path,
+host, tool or people names, no delivered-repository SHAs, no pasted artifacts.
 
 ## 12. Language rule *(§13)*
 

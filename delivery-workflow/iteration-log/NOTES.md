@@ -22,11 +22,14 @@
 >
 > Where a stamp is shared, the anchors disambiguate it as `<stamp>(rec N)`, N
 > being the record's ordinal on the surface. Each harvest opens a block
-> `> **Harvest N (<date>, <topic>)** …` and closes it with one line:
+> `> **Harvest N (<date>, <topic-alias>)** …` and closes it with one line:
 >
 > ```
-> > harvest-completion: harvest=N topic=<topic> records=<n> rows=<n> stamps=<t> <t> …
+> > harvest-completion: harvest=N topic=<topic-alias> records=<n> rows=<n> stamps=<t> <t> …
 > ```
+>
+> Everything written here is public: a topic appears only as its alias, and a
+> finding in mechanism terms (`runtime-docs/maintenance.md` §1).
 >
 > The stamps are the printed instance set: `97-iterlog` resolves each against
 > the INDEX rows, so a record counted and not carried reds by name. Harvest

@@ -17,7 +17,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Install dependencies (Ubuntu)
         if: runner.os == 'Linux'
@@ -28,6 +30,19 @@ jobs:
         run: |
           brew install bash tmux shellcheck
           echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+
+      # Built-in shapes only: a deployment's private denylist never reaches CI.
+      - name: privacy scan
+        run: |
+          bash privacy_scan.sh --self-test
+          bash privacy_scan.sh --all
+
+      - name: commit messages
+        run: |
+          for c in $(git rev-list HEAD); do
+            git log -1 --format=%B "$c" > "$RUNNER_TEMP/msg"
+            sh .githooks/commit-msg "$RUNNER_TEMP/msg" || { echo "in $c"; exit 1; }
+          done
 
       - name: Toolchain
         run: |
